@@ -1,0 +1,145 @@
+\documentclass[a4paper]{scrartcl}
+
+\usepackage{biblatex}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{tabularx}
+
+\addbibresource{refs.bib}
+
+\title{Ideas for a bachelor's thesis based on swarm model checking on the GPU}
+\author{Leonard Techel, 21510495}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+This document proposes multiple ideas for a bachelor's thesis on the topic of swarm model checking on the GPU, shows up some important related work, starts writing down tasks and their acceptance criteria and shows a first idea on an outline.
+
+\section{Ideas}
+
+% Für jede Idee:
+% - Was soll thematisch im Vordergrund liegen?
+% - In welche Richtung könnte die Arbeit gehen?
+% - Was sind die Haupt-Contributions, auf denen die Arbeit aufbaut?
+% - Unter welchem Arbeitstitel steht die Idee?
+
+\subsection{Exploration of low-connectivity models using swarm model checking on the GPU}
+
+Exploring the state space of models with \emph{low-connectivity} using the default search strategy of the Grapple algorithm, \emph{Parallel Deep Search} (PDS), can lead to a slow-down in coverage growth, as shown in \cite{DeFrancisco2020.Grapple}. The paper already suggests multiple countermeasures, in particular a two-phase swarm, depth-limited PDS / process-PDS and a combination of such techniques called \emph{scatter PDS}. They differentiate in whether they are controlled by the host or if they are self-contained within a VT running on the GPU. However, these ideas still need fine-tuning, and it may be possible to improve exploration performance by combining them in new ways, for example by alternating the two-phase approach multiple times. The work on this approach could contain:
+
+\begin{enumerate}
+    \item Finding low-connectivity models compatible with Grapple, e.g. from the BEEM database, the SPIN examples or custom-made
+    \item Experimental performance evaluation of said models using the approaches from \cite{DeFrancisco2020.Grapple}
+    \item Formulating how the algorithms could be re-combined to improve low-connectivity model exploration
+    \item Experimental evaluation of these new ideas
+\end{enumerate}
+
+Instead of (only) experimenting with different parameters to the already existing algorithms, another idea could be to formulate the swarm exploration mathematically using the notions of graph and probability theory in order to find a theoretical solution to the exploration of low-connectivity models.
+
+
+\subsection{Detecting cycles using swarm model checking on the GPU}
+
+Currently, the Grapple algorithm is limited to the verification of safety and reachability properties. To verify liveness properties and, by doing so, full LTL models, the algorithm needs to be extended, so it can detect accepting cycles. In order to do so, combining Grapple with the CUDA accelerated \emph{maximal accepting predecessors} (MAP) algorithm from \cite{Barnat2009.MAP} could be possible: Their approach is based on on-the-fly state space exploration on the host, which leaves room for replacing it with Grapple.
+
+The work on this approach could contain:
+
+\begin{enumerate}
+    \item Finding a way to combine the algorithms in a way that their data structures still fit into the GPU's shared memory
+    \item Experimental implementation of the Grapple+MAP algorithm
+    \item Evaluation on common LTL models, e.g. those from \cite{Barnat2009.MAP}
+\end{enumerate}
+
+
+\section{Related work that is interesting for this thesis}
+
+In \cite{Clarke2018.Introduction-to-Model-Checking}, a good overview on the topic of model checking is given. In \cite{Holzmann2018.Explicit-State-Model-Checking}, Gerard Holzmann, the author of the famous SPIN model checker, discusses \emph{explicit-state model checking} on which Grapple is based. In \cite{Holzmann2008.Swarm-Verification} and \cite{Holzmann2011.Swarm-Verification-Techniques}, Holzmann et al. invent \emph{Swarm Verification} and discuss techniques related to it. In \cite{Cho2018.FPGASwarm} and \cite{Bartocci2014.GPGPU-Parallel-SPIN}, the foundation for the main contribution \cite{DeFrancisco2020.Grapple} is laid by the same authors.
+
+
+\section{Draft outline}
+
+A first idea what could be part of the thesis.
+
+\begin{itemize}
+    \item Foundations
+          \begin{itemize}
+              \item Model checking
+                    \begin{itemize}
+                        \item What is model checking, why is it necessary, and what is checked?
+                        \item Explicit-State Model Checking: How it limits the scope of our work
+                        \item Swarm Verification
+                              \begin{itemize}
+                                  \item Key idea 1: Diversification of search strategies may lead to higher state space coverage than exhaustive verification under hardware bounds
+                                  \item Key idea 2: Parallelization on heterogeneous hardware is easy if the model checking can be split into independent, time- and memory-bounded verification tests
+                              \end{itemize}
+                    \end{itemize}
+              \item GPU Programming: CUDA model
+              \item Model checking on the GPU
+                    \begin{itemize}
+                        \item Quick recap on the difference between CPUs and GPUs
+                        \item Why GPUs are so interesting for our problem
+                        \item Why running model checking on the GPU is hard
+                        \item Swarm Verification on the GPU: How Grapple works
+                    \end{itemize}
+          \end{itemize}
+    \item Theoretical formulation and experimental implementation of one of the ideas above
+    \item Evaluation
+          \begin{itemize}
+              \item Comparison to the paper's results
+              \item Memory efficiency: How large can the state space be?
+              \item Scaling behavior
+              \item Further optimizations?
+          \end{itemize}
+    \item Related Work and Conclusion
+\end{itemize}
+
+
+\section{Draft of the to-be-done tasks}
+
+This section specifies tasks and their acceptance criteria that should be part of the week-based timetable.
+
+\begin{itemize}
+    \item Technical project setup
+          \begin{itemize}
+              \item The \LaTeX environment is set up and working
+              \item A new project based on the \href{https://www.tuhh.de/t3resources/sts/downloads/report.zip}{STS template} is set up and
+              \item The project's source is tracked using GIT
+          \end{itemize}
+
+    \item Develop a good understanding on the model checking foundations and write them down
+          \begin{itemize}
+              \item The foundation papers are re-read
+              \item Key ideas are noted down
+              \item The model checking part of the foundations chapter is written
+          \end{itemize}
+
+    \item Develop a good understanding in CUDA programming and write it down
+          \begin{itemize}
+              \item Re-Read the \emph{CUDA C Programming} and the \emph{Numba for CUDA GPUs} guides
+              \item Key ideas are noted down
+              \item The CUDA programming part of the foundations chapter is written
+          \end{itemize}
+
+    \item Develop a good understanding in Swarm Verification and Grapple
+          \begin{itemize}
+              \item Re-Read the related papers
+              \item Key ideas are noted down
+              \item The Model checking on the GPU chapter of the foundations chapter is written
+          \end{itemize}
+
+    \item Do an experimental implementation of the Grapple algorithm
+          \begin{itemize}
+              \item Decide whether to extend SPIN / DIVINE or do a standalone implementation
+              \item The waypoints model is written down in code
+              \item The host setup routines are implemented
+              \item The CUDA kernel is implemented
+              \item The program can be executed
+          \end{itemize}
+
+    \item $\dots$
+\end{itemize}
+
+
+\printbibliography[heading=bibintoc]
+
+\end{document}
