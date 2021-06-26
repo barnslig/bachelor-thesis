@@ -27,7 +27,11 @@ This document proposes multiple ideas for a bachelor's thesis on the topic of sw
 
 \subsection{Exploration of low-connectivity models using swarm model checking on the GPU}
 
-Exploring the state space of models with \emph{low-connectivity} using the default search strategy of the Grapple algorithm, \emph{Parallel Deep Search} (PDS), can lead to a slow-down in coverage growth, as shown in \cite{DeFrancisco2020.Grapple}. The paper already suggests multiple countermeasures, in particular a two-phase swarm, depth-limited PDS / process-PDS and a combination of such techniques called \emph{scatter PDS}. They differentiate in whether they are controlled by the host or if they are self-contained within a VT running on the GPU. However, these ideas still need fine-tuning, and it may be possible to improve exploration performance by combining them in new ways, for example by alternating the two-phase approach multiple times. The work on this approach could contain:
+Exploring the state space of models with \emph{low-connectivity} using the default search strategy of the Grapple algorithm, \emph{Parallel Deep Search} (PDS), can lead to a slow-down in coverage growth, as shown in \cite{DeFrancisco2020.Grapple}.
+The paper already suggests multiple countermeasures, in particular a two-phase swarm, depth-limited PDS / process-PDS and a combination of such techniques called \emph{scatter PDS}.
+They differentiate in whether they are controlled by the host or if they are self-contained within a VT running on the GPU.
+However, these ideas still need fine-tuning, and it may be possible to improve exploration performance by combining them in new ways, for example by alternating the two-phase approach multiple times.
+The work on this approach could contain:
 
 \begin{enumerate}
     \item Finding low-connectivity models compatible with Grapple, e.g. from the BEEM database, the SPIN examples or custom-made
@@ -41,7 +45,10 @@ Instead of (only) experimenting with different parameters to the already existin
 
 \subsection{Detecting cycles using swarm model checking on the GPU}
 
-Currently, the Grapple algorithm is limited to the verification of safety and reachability properties. To verify liveness properties and, by doing so, full LTL models, the algorithm needs to be extended, so it can detect accepting cycles. In order to do so, combining Grapple with the CUDA accelerated \emph{maximal accepting predecessors} (MAP) algorithm from \cite{Barnat2009.MAP} could be possible: Their approach is based on on-the-fly state space exploration on the host, which leaves room for replacing it with Grapple.
+Currently, the Grapple algorithm is limited to the verification of safety and reachability properties.
+To verify liveness properties and, by doing so, full LTL models, the algorithm needs to be extended, so it can detect accepting cycles.
+In order to do so, combining Grapple with the CUDA accelerated \emph{maximal accepting predecessors} (MAP) algorithm from \cite{Barnat2009.MAP} could be possible:
+Their approach is based on on-the-fly state space exploration on the host, which leaves room for replacing it with Grapple.
 
 The work on this approach could contain:
 
@@ -54,7 +61,10 @@ The work on this approach could contain:
 
 \section{Related work that is interesting for this thesis}
 
-In \cite{Clarke2018.Introduction-to-Model-Checking}, a good overview on the topic of model checking is given. In \cite{Holzmann2018.Explicit-State-Model-Checking}, Gerard Holzmann, the author of the famous SPIN model checker, discusses \emph{explicit-state model checking} on which Grapple is based. In \cite{Holzmann2008.Swarm-Verification} and \cite{Holzmann2011.Swarm-Verification-Techniques}, Holzmann et al. invent \emph{Swarm Verification} and discuss techniques related to it. In \cite{Cho2018.FPGASwarm} and \cite{Bartocci2014.GPGPU-Parallel-SPIN}, the foundation for the main contribution \cite{DeFrancisco2020.Grapple} is laid by the same authors.
+In \cite{Clarke2018.Introduction-to-Model-Checking}, a good overview on the topic of model checking is given.
+In \cite{Holzmann2018.Explicit-State-Model-Checking}, Gerard Holzmann, the author of the famous SPIN model checker, discusses \emph{explicit-state model checking} on which Grapple is based.
+In \cite{Holzmann2008.Swarm-Verification} and \cite{Holzmann2011.Swarm-Verification-Techniques}, Holzmann et al. invent \emph{Swarm Verification} and discuss techniques related to it.
+In \cite{Cho2018.FPGASwarm} and \cite{Bartocci2014.GPGPU-Parallel-SPIN}, the foundation for the main contribution \cite{DeFrancisco2020.Grapple} is laid by the same authors.
 
 
 \section{Draft outline}
