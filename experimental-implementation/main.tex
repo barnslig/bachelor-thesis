@@ -1,0 +1,100 @@
+\documentclass[a4paper]{scrartcl}
+
+\usepackage{biblatex}
+\usepackage{hyperref}
+\usepackage{microtype}
+
+\addbibresource{../refs.bib}
+
+\title{Experimental Grapple Implementation}
+\author{Leonard Techel, 21510495}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+This document denotes the necessary steps for an experimental implementation of the Grapple model checker.
+
+\tableofcontents
+
+\section{Model Definition}
+
+Models are either defined using a model specification language like Promela/DVE or inferred from program code using e.g. LLVM.
+For our task, using models written in a specification language is sufficient as we are only going to evaluate theoretical models with known state space size.
+
+Model databases:
+
+\begin{itemize}
+    \item BEEM DVE models: \url{https://paradise.fi.muni.cz/beem/}
+    \item Example PROMELA models: \url{https://github.com/nimble-code/Spin/tree/master/Examples}
+\end{itemize}
+
+Models are usually precompiled from their specification language into C code or an LLVM representation.
+
+The Waypoints model used in the Grapple paper is taken from \cite{Holzmann2011.Swarm-Verification-Techniques}.
+
+
+\section{State Generation}
+
+The state generation strategies of model checkers can be divided into \emph{a priori} and \emph{on-the-fly} generation.
+In an a priori generation, the state space graph is completely known before running the verification algorithm.
+In an on-the-fly generation, the successors of each state are created on the fly during verification.
+
+The Grapple model checker depends on on-the-fly state generation on the GPU.
+In theory, the C code generated from a model can be run directly on the GPU.
+However, as the generated C code representing a model from tools like SPIN and DIVINE heavily depends on branches (if-else conditions, switch statements), executing it on a GPU using CUDA comes with a huge performance penalty as it executes all branches and later decides which are valid.
+As of this, the on-the-fly state generation for GPUs algorithm from \cite{Bartocci2014.GPGPU-Parallel-SPIN} needs to be used.
+
+\begin{itemize}
+    \item Task 1.1: Implement Algorithm 3 from \cite{Bartocci2014.GPGPU-Parallel-SPIN}
+    \item Task 1.2: Find an easy, systematic way to re-use \texttt{.dve}/\texttt{.pml} models with this approach
+\end{itemize}
+
+
+\section{Queues}
+
+The state-space exploration loop of the Grapple model checker is based on the parallel BFS algorithm from \cite{Holzmann2012.Paralellizing-SPIN}.
+In order for the parallel threads to communicate, the algorithm is using two $N \times N$ queues where $N$ denotes the number of threads.
+These queues are implemented best using CUDA's Atomic Functions \cite{CUDA-CPP-Programming-Guide}.
+Within Python + Numba, multidimensional NumPy arrays can be used in conjunction with the Numba implementation \cite{Numba-CUDA-Guide} of those functions.
+
+\begin{itemize}
+    \item Task 2.1: Implement Queues
+\end{itemize}
+
+Prior art of such a queue can be found in the divine-cuda software. \footnote{\url{https://divine.fi.muni.cz/download/discontinued/divine-cuda.tar.gz}}
+
+
+\section{Search Algorithm}
+
+Having the model, state generation and queues ready, it is time to finally implement the basic Grapple model checker \cite{DeFrancisco2020.Grapple}:
+
+\begin{itemize}
+    \item Task 3.1: Prepare the data structures on the host, e.g. input/output queues, initial state, ...
+    \item Task 3.2: Implement the BFS Grapple search algorithm and find out how the queues are swapped
+    \item Task 3.3: Execute the model check
+    \item Task 3.4: Compare results with the evaluation from \cite{DeFrancisco2020.Grapple}
+\end{itemize}
+
+The \texttt{mix(a, b, state)} function is taken from \cite{Jenkins.Hash} and can be implemented using a Numba CUDA device function.
+
+As of their size, the input and output queues need to be within the GPUs \emph{global memory} and, as such, actually have the shape $K \times N \times N \times I$ where $K$ denotes the number of VTs / Warps, $N$ denotes the number of threads per VT and $I$ the number of queue slots per thread per VT.
+
+The (global) waypoints should be stored within the GPUs \emph{constant memory} and are checked within the VTs threads.
+
+The hash tables of each VT is stored within the \emph{shared memory} of its block/warp.
+
+
+\section{Variations of the search algorithm}
+
+Within \cite{DeFrancisco2020.Grapple}, multiple variants of the search algorithm are evaluated.
+
+\begin{itemize}
+    \item Task 4.1: Implement PDS and compare results with the evaluation from \cite{DeFrancisco2020.Grapple}
+    \item Task 4.2: Check the other variations, i.e. process-PDS, scatter-PDS, depth-limited PDS, ...
+\end{itemize}
+
+
+\printbibliography[heading=bibintoc]
+
+\end{document}
