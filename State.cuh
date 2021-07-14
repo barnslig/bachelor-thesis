@@ -8,12 +8,24 @@
 #include <cstdint>
 
 /**
- * Data structure that holds a model's state.
- * The waypoints model only needs an int32.
+ * A current state of the waypoints model
  */
-struct State
+class State
 {
+  public:
+  /**
+   * The current waypoints model state
+   */
   int32_t state;
+
+  /**
+   * Create a waypoints model successor
+   *
+   * @param process Idx of the process, 0...7
+   * @param ndc Nondeterministic branch, 0...3
+   * @returns The successor state
+   */
+  __device__ State successor_generation(unsigned int process, unsigned int ndc);
 };
 
 #endif
