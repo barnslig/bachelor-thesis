@@ -13,5 +13,5 @@ set(CMAKE_CUDA_SEPARABLE_COMPILATION True)
 
 # add_executable(grapple main.cpp Grapple.cu)
 
-add_executable(Queue Queue-main.cu Queue.cu)
+add_executable(Queue Queue-main.cu Queue.cu State.cu)
 add_executable(Hashtable Hashtable-main.cu Hashtable.cu)

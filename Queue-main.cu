@@ -21,6 +21,7 @@ __global__ void QueueKernel()
   __syncthreads();
 
   printf("From within the kernel!!!\n");
+  printf("successor of state 10: %i\n", State{10}.successor_generation(3, 0).state);
 
   Queue *myq = &q[t][threadIdx.x][threadIdx.x];
 
