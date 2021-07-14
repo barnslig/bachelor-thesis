@@ -6,25 +6,37 @@
 #define __QUEUE_H_
 
 #ifndef QUEUE_CAPACITY
+/**
+ * The queue's capacity
+ *
+ * Implemented as a `#define` instead of a template class parameter so we do
+ * not have to deal with non-specialized template compilation problems.
+ * See https://stackoverflow.com/a/10632266
+ */
 #define QUEUE_CAPACITY 4
 #endif
 
 #include "State.cuh"
 
 /**
- * Data structure for a queue element of the fixed-capacity fifo queue
+ * A queue element of the fixed-capacity fifo queue
  */
-struct QueueElem
+class QueueElem
 {
-  // The state which is stored within this queue element
+  public:
+  /**
+   * The state which is stored within this queue element
+   */
   State state;
 
-  // The successor of this queue element. `nullptr` if there is none
-  QueueElem *next;
+  /**
+   * The successor of this queue element. `nullptr` if there is none
+   */
+  QueueElem *next; // = nullptr;
 };
 
 /**
- * Data structure for a fixed-capacity fifo queue
+ * A fixed-capacity fifo queue, designed for G. J. Holzmann's parallel BFS
  *
  * The queue is not a true circular buffer as it does not track start
  * and end idx. It only works under the constraints of the two-phase
@@ -33,46 +45,50 @@ struct QueueElem
  * the second phase, the queue is emptied again. As of this, we do not
  * have to keep track of our position within the memory.
  */
-struct Queue
+class Queue
 {
-  // The statically allocated queue elems
-  QueueElem elems[QUEUE_CAPACITY];
+  private:
+  /**
+   * The statically allocated queue elems
+   */
+  QueueElem elems[QUEUE_CAPACITY]; // = {};
 
-  // The pointer to the first element in the queue
-  QueueElem *head;
+  /**
+   * The pointer to the first element in the queue
+   */
+  QueueElem *head; // = nullptr;
 
-  // The pointer to the last element in the queue
-  QueueElem *tail;
+  /**
+   * The pointer to the last element in the queue
+   */
+  QueueElem *tail; // = nullptr;
+
+  public:
+  /**
+   * Insert an element at the back
+   *
+   * New elements are silently dropped when the queue is full.
+   *
+   * @param state The state to push into the queue
+   */
+  __device__ void push(State state);
+
+  /**
+   * Remove and return the first element
+   *
+   * Returning a pointer to the state is sufficient as the queue's `elems`
+   * stay untouched until the BFS algorithm's next round.
+   *
+   * @returns A pointer to the state which is removed from the queue or null
+   */
+  __device__ State *pop();
+
+  /**
+   * Get whether a queue is empty
+   *
+   * @returns Whether the queue is empty
+   */
+  __device__ bool empty() const;
 };
-
-/**
- * Initialize a queue by setting everything to 0
- */
-__device__ void queue_init(Queue *q);
-
-/**
- * Insert an element at the back
- *
- * New elements are silently dropped when the queue is full.
- *
- * @param q The queue
- * @param state The state to push into the queue
- */
-__device__ void queue_push(Queue *q, State state);
-
-/**
- * Remove and return the first element
- *
- * @param q The queue
- * @returns A pointer to the state which is removed from the queue or null
- */
-__device__ State *queue_pop(Queue *q);
-
-/**
- * Get whether a queue is empty
- *
- * @returns Whether the queue is empty
- */
-__device__ bool queue_empty(Queue *q);
 
 #endif
