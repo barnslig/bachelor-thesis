@@ -24,20 +24,20 @@ __global__ void QueueKernel()
 
   Queue *myq = &q[t][threadIdx.x][threadIdx.x];
 
-  queue_push(myq, State{10});
-  queue_push(myq, State{11});
-  queue_push(myq, State{12});
-  queue_push(myq, State{13});
-  queue_push(myq, State{14});
+  myq->push(State{10});
+  myq->push(State{11});
+  myq->push(State{12});
+  myq->push(State{13});
+  myq->push(State{14});
 
-  printf("%i\n", queue_empty(myq));
+  printf("%i\n", myq->empty());
 
-  printf("%i\n", queue_pop(myq)->state);
-  printf("%i\n", queue_pop(myq)->state);
-  printf("%i\n", queue_pop(myq)->state);
-  printf("%i\n", queue_pop(myq)->state);
+  printf("%i\n", myq->pop()->state);
+  printf("%i\n", myq->pop()->state);
+  printf("%i\n", myq->pop()->state);
+  printf("%i\n", myq->pop()->state);
 
-  printf("%i\n", queue_empty(myq));
+  printf("%i\n", myq->empty());
 
   printf("End kernel\n");
 }

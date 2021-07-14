@@ -2,14 +2,9 @@
 
 #include "Queue.cuh"
 
-__device__ void queue_init(Queue *q)
+__device__ void Queue::push(State state)
 {
-  memset(q, 0, sizeof(Queue));
-}
-
-__device__ void queue_push(Queue *q, State state)
-{
-  if (q->tail == &q->elems[QUEUE_CAPACITY - 1])
+  if (tail == &elems[QUEUE_CAPACITY - 1])
   {
     // Drop new elements when the queue is full
     return;
@@ -19,21 +14,21 @@ __device__ void queue_push(Queue *q, State state)
    * `elems`. Otherwise, it is the tail's pointer + 1. Overflows are
    * already cleared by the condition above
    */
-  QueueElem *nextElem = q->tail ? q->tail + 1 : q->elems;
+  QueueElem *nextElem = tail ? tail + 1 : elems;
 
   nextElem->state = state;
   nextElem->next = nullptr;
 
   // When the queue is empty, we also have to set the head
-  if (!q->head)
+  if (!head)
   {
-    q->head = nextElem;
+    head = nextElem;
   }
 
   // When the queue is empty, we also have to set the tail
-  if (!q->tail)
+  if (!tail)
   {
-    q->tail = nextElem;
+    tail = nextElem;
   }
 
   /* When the queue is not empty, we have to update the tail and the current
@@ -41,36 +36,33 @@ __device__ void queue_push(Queue *q, State state)
    */
   else
   {
-    q->tail->next = nextElem;
-    q->tail = nextElem;
+    tail->next = nextElem;
+    tail = nextElem;
   }
 }
 
-__device__ State *queue_pop(Queue *q)
+__device__ State *Queue::pop()
 {
-  if (!q->head)
+  if (!head)
   {
     // Do nothing when the queue is empty
     return nullptr;
   }
 
   // Unset the tail when we pop the last element
-  if (q->tail == q->head)
+  if (tail == head)
   {
-    q->tail = nullptr;
+    tail = nullptr;
   }
 
-  /* Returning a pointer to the state is sufficient as the queue's
-   * elems stay untouched until the algorithm's next round.
-   */
-  State *state = &q->head->state;
+  State *state = &head->state;
 
-  q->head = q->head->next;
+  head = head->next;
 
   return state;
 }
 
-__device__ bool queue_empty(Queue *q)
+__device__ bool Queue::empty() const
 {
-  return !q->head && !q->tail;
+  return !head && !tail;
 }
