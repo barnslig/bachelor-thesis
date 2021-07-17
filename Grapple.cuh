@@ -4,7 +4,7 @@
 /**
  * Run the Grapple model checker on the GPU
  *
- * @return 0 or an error code
+ * @returns 0 or an error code
  */
 int runGrapple();
 

@@ -1,9 +1,7 @@
-#include "Grapple.h"
-#include <iostream>
+#include "Grapple.cuh"
 
 int main()
 {
-  std::cout << "Hallo Welt\n";
   int ret = runGrapple();
   return ret;
 }
