@@ -95,9 +95,10 @@ done:
 /**
  * The Grapple CUDA kernel
  *
+ * @param runIdx Idx of the program execution
  * @param queue A pointer to the multidimensional queues
  */
-__global__ void Grapple(Queue *queue)
+__global__ void Grapple(int runIdx, Queue *queue)
 {
   // The hashtable which tracks already visited states
   __shared__ Hashtable table;
@@ -156,7 +157,7 @@ __global__ void Grapple(Queue *queue)
               if (successor.violates())
               {
                 // When finding a violation (= a waypoint), only report it
-                printf("Block %i, Thread %i found a violating state: %i\n", blockIdx.x, threadIdx.x, successor.state);
+                printf("Run %i, Block %i, Thread %i found a violating state: %i\n", runIdx, blockIdx.x, threadIdx.x, successor.state);
               }
               else
               {
@@ -205,11 +206,11 @@ __global__ void Grapple(Queue *queue)
     }
 
     // Show block algorithm metrics
-    printf("%i: rounds %i, used buckets: %i, used slots: %i\n", blockIdx.x, rounds, used_buckets, used_slots);
+    // printf("%i: rounds %i, used buckets: %i, used slots: %i\n", blockIdx.x, rounds, used_buckets, used_slots);
   }
 }
 
-int runGrapple()
+int runGrapple(int runIdx)
 {
   int threads_per_block = GRAPPLE_N;
   int blocks_per_grid = GRAPPLE_VTs;
@@ -243,7 +244,7 @@ int runGrapple()
   gpuErrchk(cudaMemcpyToSymbol(d_hash_primers, h_hash_primers, sizeof(h_hash_primers)));
 
   // Run the kernel
-  Grapple<<<blocks_per_grid, threads_per_block>>>(d_queue);
+  Grapple<<<blocks_per_grid, threads_per_block>>>(runIdx, d_queue);
 
   // Check that the kernel launch was successful
   gpuErrchk(cudaGetLastError());
@@ -253,8 +254,6 @@ int runGrapple()
 
   // Final cleanup of the device before we leave
   gpuErrchk(cudaDeviceReset());
-
-  std::cout << "done!\n";
 
   return EXIT_SUCCESS;
 }
