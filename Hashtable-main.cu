@@ -6,38 +6,26 @@
 __global__ void HashtableKernel()
 {
   __shared__ Hashtable table;
+  // Wipe the hashtable memory on the first thread
   if (threadIdx.x == 0)
   {
-    hashtable_init(&table);
+    memset(&table, 0, sizeof(table));
   }
   __syncthreads();
 
   printf("From within the hashtable kernel!!\n");
 
-  State state = {12341};
+  State state1 = {1};
+  State state2 = {2};
+  State state3 = {4};
 
-  uint32_t state_hash = hash((uint8_t *)&state, sizeof(state), threadIdx.x) & hashmask(HASHTABLE_CAPACITY);
+  printf("2 is visited? %i\n", table.markVisited(&state1, 0x9e3779b9, 0x9e3779b9, 0x9e3779b9));
+  printf("2 is visited? %i\n", table.markVisited(&state1, 0x9e3779b9, 0x9e3779b9, 0x9e3779b9));
+  printf("3 is visited? %i\n", table.markVisited(&state2, 0x9e3779b9, 0x9e3779b9, 0x9e3779b9));
+  printf("3 is visited? %i\n", table.markVisited(&state2, 0x9e3779b9, 0x9e3779b9, 0x9e3779b9));
+  printf("4 is visited? %i\n", table.markVisited(&state3, 0x9e3779b9, 0x9e3779b9, 0x9e3779b9));
+  printf("4 is visited? %i\n", table.markVisited(&state3, 0x9e3779b9, 0x9e3779b9, 0x9e3779b9));
 
-  /* Each hash bucket can store eight bits, each representing whether a
-   * state is already visited or not. Thus, we have to divide the hash
-   * by eight. This also saves us a lot of memory!
-   * The modulo operation from the paper is omitted here as we mask
-   * the hash so it does not exceed our hashtable.
-   */
-  uint32_t hashed_value = state_hash / 8;
-
-  /* Determine which bit within our hash bucket represents the current
-   * state by using modulo
-   */
-  uint32_t sel = hashed_value % 8;
-
-  // Whether the current state is already visited
-  bool is_visited = (table.elems[hashed_value] & (1 << sel)) != 0;
-
-  // Set the current state as visited
-  table.elems[hashed_value] |= (1 << sel);
-
-  printf("%i, %i, %i, %i\n", state_hash, hashed_value, sel, is_visited);
   printf("Hashtable kernel end!\n");
 }
 
@@ -45,8 +33,7 @@ int main()
 {
   cudaError_t err = cudaSuccess;
 
-  HashtableKernel<<<1, 3>>>();
-  cudaDeviceSynchronize();
+  HashtableKernel<<<1, 1>>>();
 
   err = cudaGetLastError();
   if (err != cudaSuccess)
