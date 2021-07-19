@@ -1,5 +1,5 @@
-#ifndef __GRAPPLE_H_
-#define __GRAPPLE_H_
+#ifndef GRAPPLE_CUH_
+#define GRAPPLE_CUH_
 
 /**
  * Run the Grapple model checker on the GPU
@@ -9,4 +9,4 @@
  */
 int runGrapple(int runIdx);
 
-#endif
+#endif // GRAPPLE_CUH_

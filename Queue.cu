@@ -4,7 +4,7 @@
 
 __device__ void Queue::push(State state)
 {
-  if (tail == &elems[QUEUE_CAPACITY - 1])
+  if (tail == &elems[kQueueCapacity - 1])
   {
     // Drop new elements when the queue is full
     return;

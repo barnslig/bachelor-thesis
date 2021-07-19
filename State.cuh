@@ -2,8 +2,8 @@
  * @file
  * @brief A state successor generator
  */
-#ifndef __STATE_H_
-#define __STATE_H_
+#ifndef STATE_CUH_
+#define STATE_CUH_
 
 #include <cstdint>
 
@@ -35,4 +35,4 @@ class State
   __device__ bool violates();
 };
 
-#endif
+#endif // STATE_CUH_

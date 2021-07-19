@@ -1,4 +1,5 @@
 #include "Hashtable.cuh"
+
 #include <cstring>
 
 /**
@@ -27,37 +28,41 @@
  * latency instructions into multi-cycle latency instructions.  Still,
  * this is the fastest good hash I could find.  There were about 2^^68
  * to choose from. I only looked at a billion or so.
-*/
-#define mix(a, b, c) \
-  {                  \
-    a -= b;          \
-    a -= c;          \
-    a ^= (c >> 13);  \
-    b -= c;          \
-    b -= a;          \
-    b ^= (a << 8);   \
-    c -= a;          \
-    c -= b;          \
-    c ^= (b >> 13);  \
-    a -= b;          \
-    a -= c;          \
-    a ^= (c >> 12);  \
-    b -= c;          \
-    b -= a;          \
-    b ^= (a << 16);  \
-    c -= a;          \
-    c -= b;          \
-    c ^= (b >> 5);   \
-    a -= b;          \
-    a -= c;          \
-    a ^= (c >> 3);   \
-    b -= c;          \
-    b -= a;          \
-    b ^= (a << 10);  \
-    c -= a;          \
-    c -= b;          \
-    c ^= (b >> 15);  \
-  }
+ *
+ * @param a Any 4-byte value
+ * @param b Any 4-byte value
+ * @param c Any 4-byte value
+ */
+__device__ inline void mix(uint32_t *a, uint32_t *b, uint32_t *c)
+{
+  *a -= *b;
+  *a -= *c;
+  *a ^= (*c >> 13);
+  *b -= *c;
+  *b -= *a;
+  *b ^= (*a << 8);
+  *c -= *a;
+  *c -= *b;
+  *c ^= (*b >> 13);
+  *a -= *b;
+  *a -= *c;
+  *a ^= (*c >> 12);
+  *b -= *c;
+  *b -= *a;
+  *b ^= (*a << 16);
+  *c -= *a;
+  *c -= *b;
+  *c ^= (*b >> 5);
+  *a -= *b;
+  *a -= *c;
+  *a ^= (*c >> 3);
+  *b -= *c;
+  *b -= *a;
+  *b ^= (*a << 10);
+  *c -= *a;
+  *c -= *b;
+  *c ^= (*b >> 15);
+}
 
 /**
  * Hash a variable-length key into a 32-bit value
@@ -83,18 +88,16 @@
  * acceptable.  Do NOT use for cryptographic purposes.
  *
  * @param k The key (the unaligned variable-length array of bytes)
- * @param len The length of the key, counting by bytes
- * @param initval Any 4-byte value
+ * @param length The length of the key, counting by bytes
+ * @param a Any 4-byte value
+ * @param b Any 4-byte value
+ * @param c Any 4-byte value
  * @returns The hash
  */
 __device__ uint32_t jenkins_hash(uint8_t *k, uint32_t length, uint32_t a, uint32_t b, uint32_t c)
 {
-  uint32_t /*a, b, c, */ len;
-
   /* Set up the internal state */
-  len = length;
-  // a = b = 0x9e3779b9; /* the golden ratio; an arbitrary value */
-  // c = initval;        /* the previous hash value */
+  uint32_t len = length;
 
   /*---------------------------------------- handle most of the key */
   while (len >= 12)
@@ -102,7 +105,7 @@ __device__ uint32_t jenkins_hash(uint8_t *k, uint32_t length, uint32_t a, uint32
     a += (k[0] + ((uint32_t)k[1] << 8) + ((uint32_t)k[2] << 16) + ((uint32_t)k[3] << 24));
     b += (k[4] + ((uint32_t)k[5] << 8) + ((uint32_t)k[6] << 16) + ((uint32_t)k[7] << 24));
     c += (k[8] + ((uint32_t)k[9] << 8) + ((uint32_t)k[10] << 16) + ((uint32_t)k[11] << 24));
-    mix(a, b, c);
+    mix(&a, &b, &c);
     k += 12;
     len -= 12;
   }
@@ -136,14 +139,14 @@ __device__ uint32_t jenkins_hash(uint8_t *k, uint32_t length, uint32_t a, uint32
     a += k[0];
     /* case 0: nothing left to add */
   }
-  mix(a, b, c);
+  mix(&a, &b, &c);
   /*-------------------------------------------- report the result */
   return c;
 }
 
 __device__ bool Hashtable::markVisited(State *state, int a, int b, int c)
 {
-  uint32_t state_hash = jenkins_hash((uint8_t *)state, sizeof(State), a, b, c) & hashmask(HASHTABLE_CAPACITY);
+  uint32_t state_hash = jenkins_hash(reinterpret_cast<uint8_t *>(state), sizeof(State), a, b, c) & hashmask(kHashtableCapacity);
 
   /* Each hash bucket can store 32 bits, each representing whether a
    * state is already visited or not. Thus, we have to divide the hash
