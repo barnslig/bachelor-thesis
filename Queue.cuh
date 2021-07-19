@@ -2,19 +2,17 @@
  * @file
  * @brief A fixed-capacity fifo queue, designed for G. J. Holzmann's parallel BFS
  */
-#ifndef __QUEUE_H_
-#define __QUEUE_H_
+#ifndef QUEUE_CUH_
+#define QUEUE_CUH_
 
-#ifndef QUEUE_CAPACITY
 /**
  * The queue's capacity
  *
- * Implemented as a `#define` instead of a template class parameter so we do
+ * Implemented as a `constexpr` instead of a template class parameter so we do
  * not have to deal with non-specialized template compilation problems.
  * See https://stackoverflow.com/a/10632266
  */
-#define QUEUE_CAPACITY 4
-#endif
+constexpr int kQueueCapacity = 4;
 
 #include "State.cuh"
 
@@ -51,7 +49,7 @@ class Queue
   /**
    * The statically allocated queue elems
    */
-  QueueElem elems[QUEUE_CAPACITY]; // = {};
+  QueueElem elems[kQueueCapacity]; // = {};
 
   /**
    * The pointer to the first element in the queue
@@ -91,4 +89,4 @@ class Queue
   __device__ bool empty() const;
 };
 
-#endif
+#endif // QUEUE_CUH_

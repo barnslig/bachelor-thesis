@@ -3,40 +3,51 @@
  * @brief A hashtable for the Grapple model checker, based on the Jenkins hash functions
  * @see https://burtleburtle.net/bob/hash/doobs.html
  */
-#ifndef __HASHTABLE_H_
-#define __HASHTABLE_H_
+#ifndef HASHTABLE_CUH_
+#define HASHTABLE_CUH_
 
-#include "State.cuh"
 #include <cstdint>
 
-#ifndef HASHTABLE_CAPACITY
+#include "State.cuh"
+
 /**
- * The hashtable size, as a power of two
- *
+ * The amount of states that can be marked in the table, as a power of two
  * 2^13*32/8000 = 32.768 kilobyte
  */
-#define HASHTABLE_CAPACITY 18
-#endif
+constexpr int kHashtableCapacity = 18;
 
-#define hashsize(n) ((uint32_t)1 << (n))
-#define hashmask(n) (hashsize(n) - 1)
+__device__ constexpr uint32_t hashsize(uint32_t n)
+{
+  return (uint32_t)1 << n;
+}
+
+__device__ constexpr uint32_t hashmask(uint32_t n)
+{
+  return hashsize(n) - 1;
+}
 
 /**
  * A hashtable for the Grapple model checker, based on the Jenkins hash functions
  */
 class Hashtable
 {
+  private:
+  /**
+   * The amount of buckets within the hashtable
+   *
+   * We can divide by 32 as we do so as well on the hashes and each bucket gets
+   * assigned eight bit of different information.
+   */
+  static constexpr uint32_t kHashtableSize = hashsize(kHashtableCapacity) / 32;
+
   public:
   /**
    * The hashtable's buckets
    *
-   * We can divide by 32 as we do so as well on the hashes as each bucket gets
-   * assigned eight bit of different information.
-   *
-   * Public so we can inspect the hashtable utilization when the algorithm
+   * Public so we can inspect the hashtable utilization after the algorithm
    * has finished.
    */
-  uint32_t elems[hashsize(HASHTABLE_CAPACITY) / 32]; // = {};
+  uint32_t elems[kHashtableSize]; // = {};
 
   /**
    * Mark a state as visited
@@ -50,4 +61,4 @@ class Hashtable
   __device__ bool markVisited(State *state, int a, int b, int c);
 };
 
-#endif
+#endif // HASHTABLE_CUH_
