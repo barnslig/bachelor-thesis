@@ -2,7 +2,7 @@
 
 #include "Queue.cuh"
 
-__device__ void Queue::push(State state)
+__host__ __device__ void Queue::push(State state)
 {
   if (tail == &elems[kQueueCapacity - 1])
   {
@@ -41,7 +41,7 @@ __device__ void Queue::push(State state)
   }
 }
 
-__device__ State *Queue::pop()
+__host__ __device__ State *Queue::pop()
 {
   if (!head)
   {
@@ -62,7 +62,7 @@ __device__ State *Queue::pop()
   return state;
 }
 
-__device__ bool Queue::empty() const
+__host__ __device__ bool Queue::empty() const
 {
   return !head && !tail;
 }

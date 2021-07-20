@@ -69,7 +69,7 @@ class Queue
    *
    * @param state The state to push into the queue
    */
-  __device__ void push(State state);
+  __host__ __device__ void push(State state);
 
   /**
    * Remove and return the first element
@@ -79,14 +79,14 @@ class Queue
    *
    * @returns A pointer to the state which is removed from the queue or null
    */
-  __device__ State *pop();
+  __host__ __device__ State *pop();
 
   /**
    * Get whether a queue is empty
    *
    * @returns Whether the queue is empty
    */
-  __device__ bool empty() const;
+  __host__ __device__ bool empty() const;
 };
 
 #endif // QUEUE_CUH_
