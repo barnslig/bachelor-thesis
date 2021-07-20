@@ -16,12 +16,12 @@
  */
 constexpr int kHashtableCapacity = 18;
 
-__device__ constexpr uint32_t hashsize(uint32_t n)
+__host__ __device__ constexpr uint32_t hashsize(uint32_t n)
 {
   return (uint32_t)1 << n;
 }
 
-__device__ constexpr uint32_t hashmask(uint32_t n)
+__host__ __device__ constexpr uint32_t hashmask(uint32_t n)
 {
   return hashsize(n) - 1;
 }
@@ -58,7 +58,7 @@ class Hashtable
    * @param c A random value to seed the hash
    * @returns Whether the state was previously already visited
    */
-  __device__ bool markVisited(State *state, int a, int b, int c);
+  __host__ __device__ bool markVisited(State *state, int a, int b, int c);
 };
 
 #endif // HASHTABLE_CUH_

@@ -33,7 +33,7 @@
  * @param b Any 4-byte value
  * @param c Any 4-byte value
  */
-__device__ inline void mix(uint32_t *a, uint32_t *b, uint32_t *c)
+__host__ __device__ inline void mix(uint32_t *a, uint32_t *b, uint32_t *c)
 {
   *a -= *b;
   *a -= *c;
@@ -94,7 +94,7 @@ __device__ inline void mix(uint32_t *a, uint32_t *b, uint32_t *c)
  * @param c Any 4-byte value
  * @returns The hash
  */
-__device__ uint32_t jenkins_hash(uint8_t *k, uint32_t length, uint32_t a, uint32_t b, uint32_t c)
+__host__ __device__ uint32_t jenkins_hash(uint8_t *k, uint32_t length, uint32_t a, uint32_t b, uint32_t c)
 {
   /* Set up the internal state */
   uint32_t len = length;
@@ -144,7 +144,21 @@ __device__ uint32_t jenkins_hash(uint8_t *k, uint32_t length, uint32_t a, uint32
   return c;
 }
 
-__device__ bool Hashtable::markVisited(State *state, int a, int b, int c)
+/**
+ * Host-Compatible variant of the CUDA atomicOr function
+ */
+__host__ __device__ inline unsigned int myAtomicOr(unsigned int *address, unsigned int val)
+{
+#ifdef __CUDA_ARCH__
+  return atomicOr(address, val);
+#else
+  unsigned int old = *address;
+  *address |= val;
+  return old;
+#endif
+}
+
+__host__ __device__ bool Hashtable::markVisited(State *state, int a, int b, int c)
 {
   uint32_t state_hash = jenkins_hash(reinterpret_cast<uint8_t *>(state), sizeof(State), a, b, c) & hashmask(kHashtableCapacity);
 
@@ -161,7 +175,7 @@ __device__ bool Hashtable::markVisited(State *state, int a, int b, int c)
    */
   uint32_t sel = state_hash % 32;
 
-  bool is_visited = (atomicOr(&elems[hashed_value], (1 << sel)) & (1 << sel)) != 0;
+  bool is_visited = (myAtomicOr(&elems[hashed_value], (1 << sel)) & (1 << sel)) != 0;
 
   return is_visited;
 }
