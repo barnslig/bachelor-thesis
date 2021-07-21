@@ -22,7 +22,7 @@ Make sure to have the prerequisites installed:
 Build the project using cmake:
 
 ```
-cmake -S . -B build
+cmake -B build
 cmake --build build
 ```
 
