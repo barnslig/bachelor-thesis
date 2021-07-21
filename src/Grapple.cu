@@ -6,21 +6,24 @@
 #include <iostream>
 #include <random>
 
+#include "CudaHelper.cuh"
 #include "Grapple.cuh"
 #include "Hashtable.cuh"
 #include "Queue.cuh"
 #include "State.cuh"
 
-// Amount of parallel verification tests. Each corresponds to a CUDA block
-constexpr int kGrappleVTs = 250;
-
-// Amount of threads in a verification test. Each corresponds to a CUDA thread in a CUDA block
-constexpr int kGrappleN = 32;
-
 constexpr int kQueuesWidth = kGrappleVTs * 2 * kGrappleN * kGrappleN;
 constexpr int kQueuesVTWidth = 2 * kGrappleN * kGrappleN;
 constexpr int kQueuesPhaseWidth = kGrappleN * kGrappleN;
 constexpr int kQueuesQueuesWidth = kGrappleN;
+
+/* The 1D size of Grapple queues
+ *
+ * The queue is of size kGrappleVTs x 2 x kGrappleN x kGrappleN, but we only
+ * allocate a 1D array and calculate the addresses using `qAddr`.
+ */
+// TODO check alignment: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#device-memory-accesses
+constexpr size_t kQueuesSize = kQueuesWidth * sizeof(Queue);
 
 /**
  * Map the 4D queue array indices onto a 1D array
@@ -38,29 +41,6 @@ constexpr int kQueuesQueuesWidth = kGrappleN;
 __device__ inline int qAddr(int vt, int t, int x, int y)
 {
   return vt * kQueuesVTWidth + t * kQueuesPhaseWidth + x * kQueuesQueuesWidth + y;
-}
-
-/**
- * A wrapper method to catch and handle errors caused by cuda* functions
- *
- * @example
- *   gpuErrchk(cudaMalloc(...));
- *
- * @see https://stackoverflow.com/a/14038590
- */
-#define gpuErrchk(ans)                    \
-  {                                       \
-    gpuAssert((ans), __FILE__, __LINE__); \
-  }
-
-inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort = true)
-{
-  if (code != cudaSuccess)
-  {
-    fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
-    if (abort)
-      exit(code);
-  }
 }
 
 /**
@@ -168,7 +148,7 @@ __global__ void Grapple(int runIdx, Queue *queue, State initialState)
               if (successor.violates())
               {
                 // When finding a violation (= a waypoint), only report it
-                printf("Run %i, Block %i, Thread %i found a violating state: %i\n", runIdx, blockIdx.x, threadIdx.x, successor.state);
+                printf("%i, %i, %i, %i\n", runIdx, blockIdx.x, threadIdx.x, successor.state);
               }
               else
               {
@@ -221,24 +201,15 @@ __global__ void Grapple(int runIdx, Queue *queue, State initialState)
   }
 }
 
-int runGrapple(int runIdx)
+int runGrapple(int runIdx, State initialState, cudaStream_t *stream)
 {
   int threads_per_block = kGrappleN;
   int blocks_per_grid = kGrappleVTs;
 
-  /* Allocate global device memory for queues
-   *
-   * The queue is of size kGrappleVTs x 2 x kGrappleN x kGrappleN, but we only
-   * allocate a 1D array and calculate the addresses as follows:
-   *
-   * Access queues 1..N of worker w in block b during phase t
-   * queue[b][t][w][1..N] --> b * t * w + 1..N
-   */
-  // TODO check alignment: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#device-memory-accesses
-  const size_t queue_size = kQueuesWidth * sizeof(Queue);
+  // Allocate global device memory for queues
   Queue *d_queue;
-  gpuErrchk(cudaMalloc(&d_queue, queue_size));
-  gpuErrchk(cudaMemset(d_queue, 0, queue_size));
+  gpuErrchk(cudaMallocAsync(&d_queue, kQueuesSize, *stream));
+  gpuErrchk(cudaMemsetAsync(d_queue, 0, kQueuesSize, *stream));
 
   /* Create three random integers for each block (= VT) as hash function seeds
    * See https://en.cppreference.com/w/cpp/numeric/random/uniform_int_distribution
@@ -251,19 +222,13 @@ int runGrapple(int runIdx)
   {
     h_hash_primers[i] = distrib(gen);
   }
-  gpuErrchk(cudaMemcpyToSymbol(d_hash_primers, h_hash_primers, sizeof(h_hash_primers)));
+  gpuErrchk(cudaMemcpyToSymbolAsync(d_hash_primers, h_hash_primers, sizeof(h_hash_primers), 0, cudaMemcpyHostToDevice, *stream));
 
   // Run the kernel
-  Grapple<<<blocks_per_grid, threads_per_block>>>(runIdx, d_queue, initialState);
-
-  // Check that the kernel launch was successful
-  gpuErrchk(cudaGetLastError());
+  Grapple<<<blocks_per_grid, threads_per_block, 0, *stream>>>(runIdx, d_queue, initialState);
 
   // Free global memory allocated by `cudaMalloc`
-  gpuErrchk(cudaFree(d_queue));
-
-  // Final cleanup of the device before we leave
-  gpuErrchk(cudaDeviceReset());
+  gpuErrchk(cudaFreeAsync(d_queue, *stream));
 
   return EXIT_SUCCESS;
 }
