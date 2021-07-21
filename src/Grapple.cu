@@ -12,10 +12,10 @@
 #include "Queue.cuh"
 #include "State.cuh"
 
-constexpr int kQueuesWidth = kGrappleVTs * 2 * kGrappleN * kGrappleN;
-constexpr int kQueuesVTWidth = 2 * kGrappleN * kGrappleN;
-constexpr int kQueuesPhaseWidth = kGrappleN * kGrappleN;
-constexpr int kQueuesQueuesWidth = kGrappleN;
+constexpr size_t kQueuesWidth = kGrappleVTs * 2 * kGrappleN * kGrappleN;
+constexpr size_t kQueuesVTWidth = 2 * kGrappleN * kGrappleN;
+constexpr size_t kQueuesPhaseWidth = kGrappleN * kGrappleN;
+constexpr size_t kQueuesQueuesWidth = kGrappleN;
 
 /* The 1D size of Grapple queues
  *
@@ -38,7 +38,7 @@ constexpr size_t kQueuesSize = kQueuesWidth * sizeof(Queue);
  * @param y Input thread idx
  * @returns 1D queue array idx
  */
-__device__ inline int qAddr(int vt, int t, int x, int y)
+__device__ inline size_t qAddr(size_t vt, size_t t, size_t x, size_t y)
 {
   return vt * kQueuesVTWidth + t * kQueuesPhaseWidth + x * kQueuesQueuesWidth + y;
 }
@@ -112,11 +112,15 @@ __global__ void Grapple(int runIdx, Queue *queue, State initialState)
   // Sync all threads after initial variable setup
   __syncthreads();
 
+  int a = d_hash_primers[blockIdx.x];
+  int b = d_hash_primers[blockIdx.x + 1];
+  int c = d_hash_primers[blockIdx.x + 2];
+
   bool done = false;
   while (!done)
   {
     // The idx of the next thread which gets new states pushed into its queue
-    int next_output_i = 1;
+    int next_output_i = 0;
 
     // For each input queue of this thread
     for (int i = 0; i < kGrappleN; i += 1)
@@ -138,7 +142,7 @@ __global__ void Grapple(int runIdx, Queue *queue, State initialState)
           {
             // Generate a successor of the state from the input queue
             State successor = s->successor_generation(p, ndc);
-            bool is_visited = table.markVisited(&successor, d_hash_primers[blockIdx.x], d_hash_primers[blockIdx.x + 1], d_hash_primers[blockIdx.x + 2]);
+            bool is_visited = table.markVisited(&successor, a, b, c);
 
             // printf("Thread %i: State %i visited: %i\n", threadIdx.x, successor.state, is_visited);
 
@@ -152,12 +156,12 @@ __global__ void Grapple(int runIdx, Queue *queue, State initialState)
               }
               else
               {
-                // TODO pick random output queue i. By now we dont care and cycle through a counter
-                int this_i = next_output_i++ % kGrappleN;
+                // TODO pick next random output queue i. By now we dont care and cycle through a counter
+                next_output_i = (next_output_i + 1) % kGrappleN;
 
-                // printf("Thread %i adds state %i to thread %i.\n", threadIdx.x, successor.state, this_i);
+                // printf("Thread %i adds state %i to thread %i.\n", threadIdx.x, successor.state, next_output_i);
 
-                Queue *out = &queue[qAddr(blockIdx.x, (1 - t), this_i, threadIdx.x)];
+                Queue *out = &queue[qAddr(blockIdx.x, (1 - t), next_output_i, threadIdx.x)];
                 out->push(successor);
               }
             }
@@ -180,25 +184,6 @@ __global__ void Grapple(int runIdx, Queue *queue, State initialState)
   }
 
   // printf("VT %i: Thread %i done.\n", blockIdx.x, threadIdx.x);
-
-  if (threadIdx.x == 0)
-  {
-    // Calculate hashtable utilisation
-    int used_buckets = 0;
-    int used_slots = 0;
-    const int table_size = hashsize(kHashtableCapacity) / 32;
-    for (int i = 0; i < table_size; i += 1)
-    {
-      if (table.elems[i] != 0)
-      {
-        used_buckets += 1;
-        used_slots += __popc(table.elems[i]);
-      }
-    }
-
-    // Show block algorithm metrics
-    // printf("%i: rounds %i, used buckets: %i, used slots: %i\n", blockIdx.x, rounds, used_buckets, used_slots);
-  }
 }
 
 int runGrapple(int runIdx, State initialState, cudaStream_t *stream)
