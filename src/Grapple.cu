@@ -107,8 +107,9 @@ done:
  *
  * @param runIdx Idx of the program execution
  * @param queue A pointer to the multidimensional queues
+ * @param initialState The initial state
  */
-__global__ void Grapple(int runIdx, Queue *queue)
+__global__ void Grapple(int runIdx, Queue *queue, State initialState)
 {
   // The hashtable which tracks already visited states
   __shared__ Hashtable table;
@@ -125,7 +126,7 @@ __global__ void Grapple(int runIdx, Queue *queue)
     memset(&table, 0, sizeof(table));
     t = 0;
     rounds = 0;
-    queue[qAddr(blockIdx.x, t, threadIdx.x, 0)].push(State{0});
+    queue[qAddr(blockIdx.x, t, threadIdx.x, 0)].push(initialState);
   }
 
   // Sync all threads after initial variable setup
@@ -253,7 +254,7 @@ int runGrapple(int runIdx)
   gpuErrchk(cudaMemcpyToSymbol(d_hash_primers, h_hash_primers, sizeof(h_hash_primers)));
 
   // Run the kernel
-  Grapple<<<blocks_per_grid, threads_per_block>>>(runIdx, d_queue);
+  Grapple<<<blocks_per_grid, threads_per_block>>>(runIdx, d_queue, initialState);
 
   // Check that the kernel launch was successful
   gpuErrchk(cudaGetLastError());

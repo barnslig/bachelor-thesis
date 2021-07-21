@@ -1,11 +1,11 @@
 #include "State.cuh"
 
-__device__ State State::successor_generation(unsigned int process, unsigned int ndc)
+__host__ __device__ State State::successor_generation(unsigned int process, unsigned int ndc)
 {
   return State{state | 1 << ((4 * process) + ndc)};
 }
 
-__device__ bool State::violates()
+__host__ __device__ bool State::violates()
 {
   /* How to generate 100 random 32 bit integers using numpy:
    *
