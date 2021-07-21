@@ -25,14 +25,14 @@ class State
    * @param ndc Nondeterministic branch, 0...3
    * @returns The successor state
    */
-  __device__ State successor_generation(unsigned int process, unsigned int ndc);
+  __host__ __device__ State successor_generation(unsigned int process, unsigned int ndc);
 
   /**
    * Get whether the state violates
    *
    * @returns Whether the state violates
    */
-  __device__ bool violates();
+  __host__ __device__ bool violates();
 };
 
 #endif // STATE_CUH_
