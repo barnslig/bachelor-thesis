@@ -1,0 +1,145 @@
+\ProvidesFile{%
+  title%
+  -TUHH-STS%
+ .def%
+}[%
+  2013/10/25 v0.1
+  KOMA presents the title page project
+]
+\begingroup
+  \def\PackageNotLoadedError#1{%
+    \GenericError{%
+      (#1)\@spaces\@spaces\@spaces\@spaces
+    }{%
+      File `#1' Error: package `titlepage' hasn't been loaded%
+    }{%
+      This definition file was made to be loaded by package
+      `titlepage'.\MessageBreak
+      You may not use it without package `titlepage'!\MessageBreak
+      See the documentation of package `titlepage' for explanation.%
+    }%
+  }%
+  \ifx\csname titlepage.sty@vers\endcsname\relax
+    \PackageNotLoadedError{%
+      title-TUHH-STS.def%
+    }%
+  \fi
+\endgroup
+\DefineFamilyMember[%
+  TUHH-STS%
+]{title}
+\renewcommand*{\inittitle}{%
+\ifstsreprt@grayscaletitle
+\definecolor{keycolor1}{gray}{.5}
+  \ifx\@titlehead\@empty
+    \titlehead{\hspace*{\fill}\includegraphics[width=55mm,height=16mm]{logo/logo_tuhh_gray}
+  }%
+  \fi
+ \ifx\@mainlogo\@empty
+        \mainlogo{%
+		\includegraphics[height=23mm]{logo/logo_sts_gray}
+        }%
+  \fi
+\else
+\definecolor{keycolor1}{RGB}{88, 190, 184} % cyan
+\definecolor{keycolor1}{RGB}{80,118,179} % sts-logo-blue
+  \ifx\@titlehead\@empty
+    \titlehead{\hspace*{\fill}\includegraphics[width=55mm,height=16mm]{logo/logo_tuhh}
+  }%
+  \fi
+ \ifx\@mainlogo\@empty
+        \mainlogo{%
+		\includegraphics[height=23mm]{logo/logo_sts}
+        }%
+\fi
+\fi
+  \ifx\@university\@empty
+    \university{%
+      Hamburg University of Technology (TUHH)\\
+{\textsl{Technische Universit\"at Hamburg}}
+    }%
+  \fi
+  \ifx\@faculty\@empty
+    \faculty{%
+      Institute for Software Systems
+    }%
+  \fi
+  \ifx\@place\@empty
+    \place{%
+      21073 Hamburg
+    }%
+  \fi
+  \ifx\@titlepagefont\@empty
+    \renewcommand*{\@titlepagefont}{\sffamily}%
+  \fi
+}
+\renewcommand*{\makemaintitle}{%
+  \begin{%
+    fullsizetitle}
+    \setlength{\parskip}{\z@}%
+    \setlength{\parindent}{\z@}%
+    \setlength{\parfillskip}{\z@\@plus 1fil}%
+    \linespread{1}\selectfont
+    \@titlepagefont
+    \vskip\dimexpr -\baselineskip+25mm\relax
+    \hspace*{27mm}%
+\ifx\ta@bcor\undefined\else
+\ifstsreprt@nobcorignoretitle\else
+\hskip-\ta@bcor % ignoring BCOR % TODO: make this optional
+\fi
+\fi
+    \begin{minipage}[t][\dimexpr\paperheight-54mm\relax][t]
+      {\dimexpr\paperwidth-54mm\relax}
+    \raggedright\@titlehead\par
+    \noindent\raggedright
+    {\Large
+    \textcolor{keycolor1}{\rule[0.5ex]{1\columnwidth}{0.5pt}}\par%
+    {\textcolor{keycolor1}{\Large \@subject}}\par
+    \textcolor{keycolor1}{\rule[0.5ex]{1\columnwidth}{0.5pt}}%
+    }
+\vfill
+\vfill
+\begingroup
+    \noindent\raggedleft
+    {\Large \lineskip 0.75em
+            \begin{tabular}[t]{@{}r@{}}
+              \@author
+            \end{tabular}
+          }\par
+    \vskip 2em
+    {\titlefont{\huge\usekomafont{title}\linespread{0.9}\selectfont \@title\par}}\par
+    \vskip 1em
+    {\ifx\@subtitle\@empty\else\usekomafont{subtitle}\@subtitle\par\fi}%
+\vfill
+    {\Large \@date\par}%
+   \ifx\@publisihers\undefined\else{\Large \@publishers \par}\fi
+\endgroup
+\vfill
+\vfill
+\vfill
+    \noindent\raggedright
+    \textcolor{keycolor1}{\rule[0.5ex]{1\columnwidth}{0.5pt}}\par
+    \textcolor{keycolor1}{\large supervised by:}\par
+            {\ifx\@professor\@empty\else\@professor\par\fi}%
+            \noindent \begin{tabular}[t]{@{}l@{}}
+              \@advisor
+            \end{tabular}\par
+    \textcolor{keycolor1}{\rule[0.5ex]{1\columnwidth}{0.5pt}}\par
+    \vskip .5em
+    \begin{minipage}[b]{0.725\textwidth}
+    \color{keycolor1}
+\fontsize{10pt}{12pt}\selectfont
+\@university\par
+\@faculty\par
+\@place
+    \end{minipage}
+    \hspace{\fill}%
+    %\raisebox{-0.5\height}{\@mainlogo}\par
+\begin{minipage}[b]{0.25\textwidth}
+\raggedleft\@mainlogo\par
+\end{minipage}
+\end{minipage}
+  \end{%
+    fullsizetitle}
+}
+\endinput

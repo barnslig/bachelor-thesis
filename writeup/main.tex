@@ -1,0 +1,86 @@
+\documentclass[
+%%%%% Styles and Sizes
+%10pt,
+%11pt,
+%12pt,
+fancyheadings, % headings with seplines and logo
+%
+%%%%% Printing, Color and Binding
+%a4paper,
+%a5paper,
+%twoside, % single sided printout
+%oneside, % duplex printout (default)
+%% binding correction is used to compensate for the paper lost during binding
+%% of the document
+%BCOR=0.7cm, % binding correction
+%nobcorignoretitle, % do not ignore BCOR for title page
+%% the following two options only concern the graphics included by the document
+%% class
+%grayscaletitle, % keep the title in grayscale
+%grayscalebody, % keep the rest of the document in grayscale
+%
+%%%%% expert options: your mileage may vary
+%baseclass=..., % special option to use a different document baseclass
+]{stsreprt}
+
+\usepackage{biblatex}
+\usepackage{lipsum} % to generate some dummy text
+\usepackage{microtype}
+\usepackage{hyperref}
+
+\addbibresource{refs.bib}
+
+% Information for the Titlepage
+\author{Leonard Techel}
+\title{Low-Connectivity State Space Exploration using Swarm Model Checking on the GPU}
+\date{\today}
+\subject{Bachelor Thesis}
+\professor{Prof. Dr. Sibylle Schupp}
+\advisor{Sascha Lehmann}
+
+\begin{document}
+
+\frontmatter
+
+\maketitle
+
+\chapter*{\centering \begin{normalsize}Abstract\end{normalsize}}
+\begin{quotation}
+    \lipsum[1-3] \cite{DeFrancisco2020.Grapple}
+\end{quotation}
+
+\tableofcontents
+\listoffigures
+
+\mainmatter
+
+\chapter{Introduction}
+\lipsum[1-19]
+
+\chapter{Background}
+
+\section{asdf}
+\lipsum[10-19]
+
+\section{sdfg}
+\lipsum[20-39]
+
+\chapter{Thinking}
+\lipsum[40-69]
+
+\chapter{Experiments}
+\lipsum[70-89]
+
+\chapter{Conclusion}
+\lipsum[80-99]
+
+\appendix
+
+\chapter{Listings}
+\lipsum[90-99]
+
+\backmatter
+
+\printbibliography[heading=bibintoc]
+
+\end{document}
