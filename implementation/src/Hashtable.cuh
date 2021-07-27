@@ -36,7 +36,7 @@ class Hashtable
    * The amount of buckets within the hashtable
    *
    * We can divide by 32 as we do so as well on the hashes and each bucket gets
-   * assigned eight bit of different information.
+   * assigned 32 bit of different information.
    */
   static constexpr uint32_t kHashtableSize = hashsize(kHashtableCapacity) / 32;
 
