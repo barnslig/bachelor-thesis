@@ -23,8 +23,10 @@ fancyheadings, % headings with seplines and logo
 %baseclass=..., % special option to use a different document baseclass
 ]{stsreprt}
 
+\usepackage{amssymb}
 \usepackage{biblatex}
-\usepackage{lipsum} % to generate some dummy text
+\usepackage{csquotes}
+\usepackage{mathtools}
 \usepackage{microtype}
 \usepackage{hyperref}
 
@@ -46,7 +48,22 @@ fancyheadings, % headings with seplines and logo
 
 \chapter*{\centering \begin{normalsize}Abstract\end{normalsize}}
 \begin{quotation}
-    \lipsum[1-3] \cite{DeFrancisco2020.Grapple}
+    % 1. Motivation / Topic of the research area
+    Using small, independent verification tests, model checking large models with billions of states can be parallelized on GPUs.
+    % 2. Specific problem
+    This approach works great on models with high connectivity.
+    However, it fails when a model has only few edges between states or large portions of the state space are hidden behind bottleneck structures.
+
+    % 3. Standard solutions and their limitations
+    Past work on the \emph{Grapple} model checker has tried different approaches including depth-limiting and alternating between breadth-first and depth-first search.
+
+    % 4. Outline of the new solution
+    The main goal of this thesis is to:
+    (1) create a systematic way of classifying a model as \emph{low-connectivity}
+    (2) minimize the amount of verification tests needed to maximize the state space coverage of said models.
+    To do that, we provide an implementation of the \emph{Grapple} model checker.
+
+    % 5. How the solution was evaluated and what its outcomes are
 \end{quotation}
 
 \tableofcontents
@@ -55,29 +72,166 @@ fancyheadings, % headings with seplines and logo
 \mainmatter
 
 \chapter{Introduction}
-\lipsum[1-19]
+
+% 1. Motivation / Topic of the research area
+
+In an explicit-state model checker, state space exploration of large models with billions of states is a time-consuming problem.
+Swarm Verification
+
+Using swarm verification, the problem can be split into small, independent verification tests.
+Past work has shown that by executing these verification tests in parallel on GPUs, a high-speed model checker can be implemented \cite{DeFrancisco2020.Grapple}.
+
+% 2. Specific problem
+
+To create the small, independent verification tests, diversification is used.
+Each verification test only covers a subset of the state space.
+Together, the verification tests nearly achieve full state space coverage.
+This approach works great on models with high connectivity.
+However, it fails when a model has only few edges between states or large portions of the state space are hidden behind bottleneck structures.
+
+\chapter{Related Work}
 
 \chapter{Background}
 
-\section{asdf}
-\lipsum[10-19]
+\section{Model Checking}
 
-\section{sdfg}
-\lipsum[20-39]
+% What is a model checker?
+% TODO Why do we search for counterexamples? The answer may fit better to the properties paragraph.
+% TODO Why can it be divided into three main problems and why the specific methods stated here?
+Model checking is a formal verification method that checks whether a state machine satisfies a specification.
+For example, the state machine of an elevator may be verified to meet the safety property of not opening the doors between floors.
+To do so, a \emph{model checker} searches the state space for counterexamples, also called violations.
+When a violation is found, the path of state transitions that lead to the violation is reported back.
+Model checking can thus be divided into three main problems:
+Description of models through state machines, definition of the specification through temporal logic and algorithms that verify whether a state machine models a specification.
 
-\chapter{Thinking}
-\lipsum[40-69]
+%% What is an explicit-state model checker?
+There are two main branches of model checking:
+Explicit-State Model Checking and Symbolic Model Checking.
+Explicit-State Model Checking can only verify finite state machines.
+In particular, the model has to have finite states, each state needs to be representable by a finite-size tuple containing its atomic propositions and the model changes state through execution of state transitions.
+To overcome these limitations and verify potentially infinite-size state machines or systems of unknown structure, Symbolic Model Checking uses the abstraction of \emph{symbols}, each representing a set of states and transitions.
+Within this thesis, we are only considering explicit-state model checking.
+
+%% What do we want to find out with a model checker? safety, reachability, liveness, ...
+% TODO Connection to temporal logic? Eventually we can skip that here.
+Each state in a model is labelled with atomic propositions that hold true while the state is active.
+An example for such propositions are the current values of variables in a program at a given state.
+In a specification, different types of properties can then be expressed onto these propositions.
+Three common properties are reachability, safety and liveness:
+Reachability means that an atomic proposition holds true at some state in the future.
+Safety means that an atomic proposition holds true at all states in the future.
+Liveness means that an atomic proposition holds true infinitely often in the future, meaning that it does not happen that the atomic proposition never holds true.
+Within this thesis, we are only considering reachability and safety properties.
+
+%% Why is model checking so time consuming?
+% TODO Introduce processes in the explicit-state model checking section
+% TODO Be more precise about *what* grows exponentially and *why* this is a problem
+A challenge all model checking algorithms have to face is the \emph{state explosion problem}.
+In an asynchronous model of $n$ processes, each consisting of $m$ states, the number of states grows exponentially by the number of processes, namely $m^n$.
+This means that even for small models, it is often not possible to fit all reachable states of the system into a computer's memory.
+Therefore, every model checking algorithm needs to reduce the state space in some sense.
+However, even then, a non-parallel algorithm may need a lot of physical time for exhaustive verification of the state space.
+In exhaustive verification, all states are visited and checked for a violation.
+\cite{Clarke2018.Introduction-to-Model-Checking,Holzmann2018.Explicit-State-Model-Checking}
+
+\subsection{Parallelized model checking}
+
+% How can model checking be speed up using parallelization?
+% TODO Do we need the algorithm summary?
+% TODO If yes, why leave the reader with "we are going to tell later"?
+Model checking can be speed up by parallelizing the state space exploration.
+For example, the Spin model checker uses a parallel breadth-first search, as described in the paper \enquote{Parallelizing the Spin Model Checker} by G. J. Holzmann \cite{Holzmann2012.Paralellizing-SPIN}.
+In summary, this parallel BFS algorithm works by allowing lock-free communication between threads using a shared, multidimensional queue array where, for each pair of threads, there is only one piece of memory to communicate over.
+Writing and reading to this piece of memory is coordinated by splitting the algorithm into two alternating phases.
+We are going to cover this algorithm more in-depth later on.
+
+%% What challenge is solved by Swarm Verification?
+A major challenge in parallelized BFS is the communication overhead between threads:
+Shared memory does not allow to easily split the work onto a cluster of heterogeneous processors or the massively parallel architecture of a GPU on which thousands of threads can exist simultaneously.
+
+\subsection{Swarm Verification}
+
+%% How does Swarm Verification work?
+%% How does Swarm Verification differ from other approaches?
+\emph{Swarm Verification} solves the challenge of parallelizing state-space search by splitting the state space exploration into many small, independent, memory-limited tasks called \emph{Verification Tests} (VTs).
+Each VT only covers a small subset of the total state space and, using diversification techniques, uses a different search path.
+
+The trick is that we do not care about exhaustive, 100\% state space coverage:
+Instead, by executing all VTs and collecting their results, we still achieve nearly full state space coverage.
+
+As the VTs are independent of each other, we can easily execute them on heterogeneous computers.
+Even further, as VTs are also memory-limited, we can massively parallelize them on devices with very limited resources like GPUs.
+\cite{Holzmann2008.Swarm-Verification}
+
+\section{CUDA}
+
+% How can many small tasks be executed in parallel?
+%% Why are GPUs so interesting for swarm verification / model checking?
+%% What is the abstraction model of CUDA?
+%% What challenge does CUDA solve?
+
+\section{Grapple model checker}
+
+% How can the verification tests be run on GPUs using CUDA?
+%% How does the Grapple algorithm work?
+%% How can the Grapple algorithm and its in- and outputs be formally defined?
+%% Which variations of the algorithm exist?
+
+\chapter{Implementation}
+
+% How can a Grapple model checker be implemented?
+%% Of which components does the Grapple model checker consist?
+%% What is the GPU memory model of the algorithm?
+
+\section{Model Definition and State Generation}
+
+%% How can states be created on-the-fly on the GPU? How are Models defined?
+
+The states of a model support two operations: \emph{successorGeneration} returns a successor to the current state, \emph{violates} returns whether the state violates.
+
+\section{Queues}
+
+%% How can efficient, parallel worker queues be implemented in CUDA?
+
+The queues support three operations: \emph{push} adds an element at the back, \emph{pop} removes and returns the first element from the front, \emph{empty} tells whether the queue is empty.
+
+\section{Hash table}
+
+%% How do the hashtables work and how can we control the collisions?
+
+The hash tables support one operation: \emph{markVisited} marks a state as visited and returns whether it was already visited before.
+
+\section{State Space Exploration}
+
+%% How does the state space exploration loop work?
+%% How does the kernel setup on the host work?
+%% How is the work split up onto the GPU's threads?
+%% How can the variations (PDS, process-PDS, scatter-PDS, ...) be implemented?
+
+% TODO Post processing? What to do with the output data?
 
 \chapter{Experiments}
-\lipsum[70-89]
+
+\section{Low-Connectivity Models}
+
+% What are low-connectivity models?
+%% How can a model be classified as low-connectivity? (technically vs. theoretically ?)
+%% Why is the Grapple search algorithm so slow on low-connectivity models?
+
+\section{Optimizing Grapple on Low-Connectivity Models}
+
+% How can the algorithm be altered so that it can efficiently search low-connectivity models?
+%% Precondition: We only consider models with >100% hash table utilization. Models with less utilization are checked exhaustively either way.
+%% Goal: Maximize state space coverage while minimizing the amount of VTs required to do so.
+%% Benchmark 1: Comparison with the baseline implementation.
+%% ? Benchmark 2: Comparison with the Waypoints model (how?) ?
 
 \chapter{Conclusion}
-\lipsum[80-99]
 
-\appendix
+% \appendix
 
-\chapter{Listings}
-\lipsum[90-99]
+% \chapter{Listings}
 
 \backmatter
 
