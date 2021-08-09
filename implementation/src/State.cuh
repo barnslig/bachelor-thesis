@@ -21,11 +21,11 @@ class State
   /**
    * Create a waypoints model successor
    *
+   * @param successor A pointer where the successor is written to
    * @param process Idx of the process, 0...7
    * @param ndc Nondeterministic branch, 0...3
-   * @returns The successor state
    */
-  __host__ __device__ State successor_generation(unsigned int process, unsigned int ndc);
+  __host__ __device__ void successor_generation(State *successor, unsigned int process, unsigned int ndc);
 
   /**
    * Get whether the state violates

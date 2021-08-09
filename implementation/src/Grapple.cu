@@ -141,7 +141,8 @@ __global__ void Grapple(int runIdx, Queue *queue, State initialState)
           for (unsigned int ndc = 0; ndc < 4; ndc += 1)
           {
             // Generate a successor of the state from the input queue
-            State successor = s->successor_generation(p, ndc);
+            State successor;
+            s->successor_generation(&successor, p, ndc);
             bool is_visited = table.markVisited(&successor, a, b, c);
 
             // printf("Thread %i: State %i visited: %i\n", threadIdx.x, successor.state, is_visited);

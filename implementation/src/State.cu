@@ -1,8 +1,8 @@
 #include "State.cuh"
 
-__host__ __device__ State State::successor_generation(unsigned int process, unsigned int ndc)
+__host__ __device__ void State::successor_generation(State *successor, unsigned int process, unsigned int ndc)
 {
-  return State{state | 1 << ((4 * process) + ndc)};
+  successor->state = state | 1 << ((4 * process) + ndc);
 }
 
 __host__ __device__ bool State::violates()
