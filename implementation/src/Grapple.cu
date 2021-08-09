@@ -181,6 +181,8 @@ __global__ void Grapple(int runIdx, Queue *queue, State initialState)
       rounds += 1;
       t = 1 - t;
     }
+
+    __syncthreads();
   }
 
   // printf("VT %i: Thread %i done.\n", blockIdx.x, threadIdx.x);
