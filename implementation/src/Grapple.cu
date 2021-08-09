@@ -186,7 +186,7 @@ __global__ void Grapple(int runIdx, Queue *queue, State initialState)
   // printf("VT %i: Thread %i done.\n", blockIdx.x, threadIdx.x);
 }
 
-int runGrapple(int runIdx, State initialState, cudaStream_t *stream)
+int runGrapple(int runIdx, State initialState, std::mt19937 *gen, cudaStream_t *stream)
 {
   int threads_per_block = kGrappleN;
   int blocks_per_grid = kGrappleVTs;
@@ -199,13 +199,11 @@ int runGrapple(int runIdx, State initialState, cudaStream_t *stream)
   /* Create three random integers for each block (= VT) as hash function seeds
    * See https://en.cppreference.com/w/cpp/numeric/random/uniform_int_distribution
    */
-  std::random_device rd;  // Will be used to obtain a seed for the random number engine
-  std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
   std::uniform_int_distribution<> distrib(INT32_MIN, INT32_MAX);
   int h_hash_primers[kGrappleVTs * 3] = {};
   for (int i = 0; i < kGrappleVTs * 3; i += 1)
   {
-    h_hash_primers[i] = distrib(gen);
+    h_hash_primers[i] = distrib(*gen);
   }
   gpuErrchk(cudaMemcpyToSymbolAsync(d_hash_primers, h_hash_primers, sizeof(h_hash_primers), 0, cudaMemcpyHostToDevice, *stream));
 

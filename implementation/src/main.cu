@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <random>
 
 #include "CudaHelper.cuh"
 #include "Grapple.cuh"
@@ -16,6 +17,10 @@ int main()
 {
   printf("run, block, thread, state\n");
 
+  // std::random_device rd; // Will be used to obtain a seed for the random number engine
+  unsigned int seed = 1736331306; // rd(); // Use a constant seed for reproducible results
+  std::mt19937 gen(seed);         // Standard mersenne_twister_engine seeded with rd()
+
   cudaStream_t stream[kGrappleRuns];
   int ret = 0;
 
@@ -26,7 +31,7 @@ int main()
      */
     cudaStreamCreate(&stream[i]);
 
-    ret = runGrapple(i, State{0}, &stream[i]);
+    ret = runGrapple(i, State{0}, &gen, &stream[i]);
     if (ret != 0)
     {
       // Terminate program execution when a single Grapple run has failed
