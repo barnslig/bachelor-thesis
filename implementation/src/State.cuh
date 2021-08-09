@@ -18,6 +18,9 @@ class State
    */
   int32_t state;
 
+  __host__ __device__ State() : state(0){};
+  __host__ __device__ State(int32_t state) : state(state){};
+
   /**
    * Create a waypoints model successor
    *

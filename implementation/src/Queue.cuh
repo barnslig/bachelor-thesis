@@ -62,6 +62,8 @@ class Queue
   QueueElem *tail; // = nullptr;
 
   public:
+  __host__ __device__ Queue() : elems(), head(nullptr), tail(nullptr){};
+
   /**
    * Insert an element at the back
    *
