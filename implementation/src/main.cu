@@ -1,8 +1,8 @@
 #include <unistd.h>
 
-#include <cstdio>
 #include <iostream>
 #include <random>
+#include <unordered_set>
 
 #include "CudaHelper.cuh"
 #include "Grapple.cuh"
@@ -45,29 +45,43 @@ int main(int argc, char *const argv[])
     }
   }
 
-  printf("run, block, thread, state\n");
+  std::cout << "run, block, thread, state, uniques\n";
 
   std::mt19937 gen(argSeed);
 
   cudaStream_t stream[argRuns];
-  int ret = 0;
 
-  for (int i = 0; i < argRuns; i += 1)
+  // Output of the last grapple run
+  std::shared_ptr<GrappleOutput> out;
+
+  // Set of all discovered violations. Used to track number of unique violations
+  std::unordered_set<std::string> unique_violations;
+
+  for (unsigned int i = 0; i < argRuns; i += 1)
   {
     /* Each Grapple run gets assigned to a different CUDA stream to achieve
      * maximum concurrency
      */
     cudaStreamCreate(&stream[i]);
 
-    ret = runGrapple(i, State{0}, &gen, &stream[i]);
-    if (ret != 0)
+    out = runGrapple(i, State{0}, &gen, &stream[i]);
+    while (!out->violations->empty())
     {
-      // Terminate program execution when a single Grapple run has failed
-      goto terminate;
+      Violation *v = out->violations->pop();
+      unique_violations.insert(v->state.str());
+      std::cout
+          << v->run
+          << ", "
+          << v->block
+          << ", "
+          << v->thread
+          << ", "
+          << v->state.str()
+          << ", "
+          << unique_violations.size()
+          << "\n";
     }
   }
-
-terminate:
 
   // Wait for all CUDA streams to terminate
   gpuErrchk(cudaDeviceSynchronize());

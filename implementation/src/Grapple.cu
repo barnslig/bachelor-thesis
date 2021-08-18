@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 #include <random>
 
 #include "CudaHelper.cuh"
@@ -83,8 +84,10 @@ done:
  * @param queue A pointer to the multidimensional queues
  * @param hashPrimers A pointer to an array containing three hash primers per block
  * @param initialState The initial state
+ * @param output The violations output buffer
  */
-__global__ void Grapple(int runIdx, Queue *queue, int *hashPrimers, State initialState)
+__global__ void
+Grapple(unsigned int runIdx, Queue *queue, int *hashPrimers, State initialState, ViolationOutputBuffer *output)
 {
   // The hashtable which tracks already visited states
   __shared__ Hashtable table;
@@ -147,8 +150,14 @@ __global__ void Grapple(int runIdx, Queue *queue, int *hashPrimers, State initia
             {
               if (successor.violates())
               {
-                // When finding a violation (= a waypoint), only report it
-                printf("%i, %i, %i, %i\n", runIdx, blockIdx.x, threadIdx.x, successor.state);
+                // When finding a violation (= a waypoint), report it
+                Violation v = {
+                    .run = runIdx,
+                    .block = blockIdx.x,
+                    .thread = threadIdx.x,
+                    .state = successor,
+                };
+                output->push(v);
               }
               else
               {
@@ -184,7 +193,8 @@ __global__ void Grapple(int runIdx, Queue *queue, int *hashPrimers, State initia
   // printf("VT %i: Thread %i done.\n", blockIdx.x, threadIdx.x);
 }
 
-int runGrapple(int runIdx, State initialState, std::mt19937 *gen, cudaStream_t *stream)
+std::shared_ptr<GrappleOutput>
+runGrapple(unsigned int runIdx, State initialState, std::mt19937 *gen, cudaStream_t *stream)
 {
   int threads_per_block = kGrappleN;
   int blocks_per_grid = kGrappleVTs;
@@ -215,12 +225,26 @@ int runGrapple(int runIdx, State initialState, std::mt19937 *gen, cudaStream_t *
   }
   gpuErrchk(cudaMemcpyAsync(d_hash_primers, h_hash_primers, kHashPrimersSize, cudaMemcpyHostToDevice, *stream));
 
+  // Create an output buffer for discovered violations
+  ViolationOutputBuffer *d_output;
+  gpuErrchk(cudaMallocAsync(&d_output, sizeof(ViolationOutputBuffer), *stream));
+  gpuErrchk(cudaMemsetAsync(d_output, 0, sizeof(ViolationOutputBuffer), *stream));
+
   // Run the kernel
-  Grapple<<<blocks_per_grid, threads_per_block, 0, *stream>>>(runIdx, d_queue, d_hash_primers, initialState);
+  Grapple<<<blocks_per_grid, threads_per_block, 0, *stream>>>(runIdx, d_queue, d_hash_primers, initialState, d_output);
+
+  // Copy discovered violations back to host
+  ViolationOutputBuffer h_output;
+  gpuErrchk(cudaMemcpyAsync(&h_output, d_output, sizeof(ViolationOutputBuffer), cudaMemcpyDeviceToHost, *stream));
 
   // Free global memory allocated by `cudaMalloc`
   gpuErrchk(cudaFreeAsync(d_queue, *stream));
   gpuErrchk(cudaFreeAsync(d_hash_primers, *stream));
+  gpuErrchk(cudaFreeAsync(d_output, *stream));
 
-  return EXIT_SUCCESS;
+  // Create and return the output struct
+  GrappleOutput out = {
+      .violations = std::make_shared<ViolationOutputBuffer>(h_output),
+  };
+  return std::make_shared<GrappleOutput>(out);
 }

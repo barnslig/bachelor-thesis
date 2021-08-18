@@ -1,8 +1,15 @@
+#include <cstdio>
+
 #include "State.cuh"
 
 __host__ __device__ void State::successor_generation(State *successor, unsigned int process, unsigned int ndc)
 {
   successor->state = state | 1 << ((4 * process) + ndc);
+}
+
+__host__ std::string State::str()
+{
+  return std::to_string(state);
 }
 
 __host__ __device__ bool State::violates()

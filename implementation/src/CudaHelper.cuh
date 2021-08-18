@@ -26,4 +26,32 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort =
   }
 }
 
+/**
+ * Host-Compatible variant of the CUDA atomicOr function
+ */
+__host__ __device__ inline unsigned int myAtomicOr(unsigned int *address, unsigned int val)
+{
+#ifdef __CUDA_ARCH__
+  return atomicOr(address, val);
+#else
+  unsigned int old = *address;
+  *address |= val;
+  return old;
+#endif
+}
+
+/**
+ * Host-Compatible variant of the CUDA atomicInc function
+ */
+__host__ __device__ inline unsigned int myAtomicInc(unsigned int *address, unsigned int val)
+{
+#ifdef __CUDA_ARCH__
+  return atomicInc(address, val);
+#else
+  unsigned int old = *address;
+  *address += val;
+  return old;
+#endif
+}
+
 #endif // CUDA_HELPER_CUH_

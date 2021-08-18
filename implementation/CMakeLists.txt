@@ -29,6 +29,10 @@ target_link_libraries(Hashtable_test gtest_main)
 add_executable(Queue_test src/Queue_test.cu src/Queue.cu)
 target_link_libraries(Queue_test gtest_main)
 
+add_executable(OutputBuffer_test src/OutputBuffer_test.cu)
+target_link_libraries(OutputBuffer_test gtest_main)
+
 include(GoogleTest)
 gtest_discover_tests(Hashtable_test)
 gtest_discover_tests(Queue_test)
+gtest_discover_tests(OutputBuffer_test)

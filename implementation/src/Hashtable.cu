@@ -2,6 +2,8 @@
 
 #include <cstring>
 
+#include "CudaHelper.cuh"
+
 /**
  * Mix three 32-bit values reversibly
  *
@@ -142,20 +144,6 @@ __host__ __device__ uint32_t jenkins_hash(uint8_t *k, uint32_t length, uint32_t 
   mix(&a, &b, &c);
   /*-------------------------------------------- report the result */
   return c;
-}
-
-/**
- * Host-Compatible variant of the CUDA atomicOr function
- */
-__host__ __device__ inline unsigned int myAtomicOr(unsigned int *address, unsigned int val)
-{
-#ifdef __CUDA_ARCH__
-  return atomicOr(address, val);
-#else
-  unsigned int old = *address;
-  *address |= val;
-  return old;
-#endif
 }
 
 __host__ __device__ bool Hashtable::markVisited(State *state, int a, int b, int c)

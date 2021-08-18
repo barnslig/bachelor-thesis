@@ -6,6 +6,7 @@
 #define STATE_CUH_
 
 #include <cstdint>
+#include <string>
 
 /**
  * A current state of the waypoints model
@@ -29,6 +30,13 @@ class State
    * @param ndc Nondeterministic branch, 0...3
    */
   __host__ __device__ void successor_generation(State *successor, unsigned int process, unsigned int ndc);
+
+  /**
+   * Format the state as a string. Only used on the host
+   *
+   * @returns String representation of the state
+   */
+  __host__ std::string str();
 
   /**
    * Get whether the state violates
