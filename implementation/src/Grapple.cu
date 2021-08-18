@@ -25,6 +25,9 @@ constexpr size_t kQueuesQueuesWidth = kGrappleN;
 // TODO check alignment: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#device-memory-accesses
 constexpr size_t kQueuesSize = kQueuesWidth * sizeof(Queue);
 
+constexpr size_t kHashPrimersWidth = kGrappleVTs * 3;
+constexpr size_t kHashPrimersSize = kHashPrimersWidth * sizeof(int);
+
 /**
  * Map the 4D queue array indices onto a 1D array
  *
@@ -42,15 +45,6 @@ __device__ inline size_t qAddr(size_t vt, size_t t, size_t x, size_t y)
 {
   return vt * kQueuesVTWidth + t * kQueuesPhaseWidth + x * kQueuesQueuesWidth + y;
 }
-
-/**
- * An array of three random hash function seeds for each VT (= one block)
- *
- * All random integers are stored in one big array placed in constant memory
- * on the device. To access them, use d_hash_primers[blockIdx.x],
- * d_hash_primers[blockIdx.x + 1] and d_hash_primers[blockIdx.x + 2].
- */
-__constant__ int d_hash_primers[kGrappleVTs * 3];
 
 /**
  * Get whether a VT is finished
@@ -87,9 +81,10 @@ done:
  *
  * @param runIdx Idx of the program execution
  * @param queue A pointer to the multidimensional queues
+ * @param hashPrimers A pointer to an array containing three hash primers per block
  * @param initialState The initial state
  */
-__global__ void Grapple(int runIdx, Queue *queue, State initialState)
+__global__ void Grapple(int runIdx, Queue *queue, int *hashPrimers, State initialState)
 {
   // The hashtable which tracks already visited states
   __shared__ Hashtable table;
@@ -112,9 +107,9 @@ __global__ void Grapple(int runIdx, Queue *queue, State initialState)
   // Sync all threads after initial variable setup
   __syncthreads();
 
-  int a = d_hash_primers[blockIdx.x];
-  int b = d_hash_primers[blockIdx.x + 1];
-  int c = d_hash_primers[blockIdx.x + 2];
+  int a = hashPrimers[blockIdx.x];
+  int b = hashPrimers[blockIdx.x + 1];
+  int c = hashPrimers[blockIdx.x + 2];
 
   bool done = false;
   while (!done)
@@ -199,22 +194,33 @@ int runGrapple(int runIdx, State initialState, std::mt19937 *gen, cudaStream_t *
   gpuErrchk(cudaMallocAsync(&d_queue, kQueuesSize, *stream));
   gpuErrchk(cudaMemsetAsync(d_queue, 0, kQueuesSize, *stream));
 
+  /**
+   * An array of three random hash function seeds for each VT (= one block)
+   *
+   * All random integers are stored in one big array placed in constant memory
+   * on the device. To access them, use d_hash_primers[blockIdx.x],
+   * d_hash_primers[blockIdx.x + 1] and d_hash_primers[blockIdx.x + 2].
+   */
+  int *d_hash_primers;
+  gpuErrchk(cudaMallocAsync(&d_hash_primers, kHashPrimersSize, *stream));
+
   /* Create three random integers for each block (= VT) as hash function seeds
    * See https://en.cppreference.com/w/cpp/numeric/random/uniform_int_distribution
    */
   std::uniform_int_distribution<> distrib(INT32_MIN, INT32_MAX);
-  int h_hash_primers[kGrappleVTs * 3] = {};
-  for (int i = 0; i < kGrappleVTs * 3; i += 1)
+  int h_hash_primers[kHashPrimersWidth] = {};
+  for (int i = 0; i < kHashPrimersWidth; i += 1)
   {
     h_hash_primers[i] = distrib(*gen);
   }
-  gpuErrchk(cudaMemcpyToSymbolAsync(d_hash_primers, h_hash_primers, sizeof(h_hash_primers), 0, cudaMemcpyHostToDevice, *stream));
+  gpuErrchk(cudaMemcpyAsync(d_hash_primers, h_hash_primers, kHashPrimersSize, cudaMemcpyHostToDevice, *stream));
 
   // Run the kernel
-  Grapple<<<blocks_per_grid, threads_per_block, 0, *stream>>>(runIdx, d_queue, initialState);
+  Grapple<<<blocks_per_grid, threads_per_block, 0, *stream>>>(runIdx, d_queue, d_hash_primers, initialState);
 
   // Free global memory allocated by `cudaMalloc`
   gpuErrchk(cudaFreeAsync(d_queue, *stream));
+  gpuErrchk(cudaFreeAsync(d_hash_primers, *stream));
 
   return EXIT_SUCCESS;
 }
