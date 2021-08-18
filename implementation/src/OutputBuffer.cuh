@@ -21,6 +21,13 @@
  * By using a fixed-capacity elements array and array indices instead
  * of pointers for head and tail, we can copy an `OutputBuffer` between
  * host and device without worry.
+ *
+ * The buffer is designed to ONLY be used by:
+ *  1) Push elements into the buffer
+ *  2) Remove elements from the buffer
+ *  3) Drop the buffer
+ * Do NOT mix push and pop! To reuse a buffer, ALWAYS `memset` its
+ * memory to 0!
  */
 template <typename T, unsigned int N>
 class OutputBuffer
