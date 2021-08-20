@@ -11,7 +11,7 @@ set(CMAKE_CUDA_SEPARABLE_COMPILATION True)
 # makes nvcc mad
 # add_compile_options(-Wall -Wextra -pedantic -Werror)
 
-add_executable(grapple src/main.cu src/Grapple.cu src/Hashtable.cu src/Queue.cu src/State.cu)
+add_executable(grapple src/main.cu src/Grapple.cu src/State.cu)
 
 ## Unit Tests ##
 include(FetchContent)
@@ -23,10 +23,10 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
-add_executable(Hashtable_test src/Hashtable_test.cu src/Hashtable.cu)
+add_executable(Hashtable_test src/Hashtable_test.cu)
 target_link_libraries(Hashtable_test gtest_main)
 
-add_executable(Queue_test src/Queue_test.cu src/Queue.cu)
+add_executable(Queue_test src/Queue_test.cu)
 target_link_libraries(Queue_test gtest_main)
 
 add_executable(OutputBuffer_test src/OutputBuffer_test.cu)

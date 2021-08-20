@@ -2,15 +2,17 @@
 
 #include "Hashtable.cuh"
 
+using TestHashtable = Hashtable<int, 18>;
+
 TEST(HashtableTest, MarkVisited)
 {
-  Hashtable table = {};
+  TestHashtable table = {};
 
   int a = 0x9e3779b9, b = 0x9e3779b9, c = 0x9e3779b9;
 
-  State state1 = {1};
-  State state2 = {2};
-  State state3 = {4};
+  int state1 = 1;
+  int state2 = 2;
+  int state3 = 4;
 
   ASSERT_FALSE(table.markVisited(&state1, a, b, c));
   ASSERT_TRUE(table.markVisited(&state1, a, b, c));

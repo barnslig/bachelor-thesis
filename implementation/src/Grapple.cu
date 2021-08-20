@@ -9,25 +9,6 @@
 
 #include "CudaHelper.cuh"
 #include "Grapple.cuh"
-#include "Hashtable.cuh"
-#include "Queue.cuh"
-#include "State.cuh"
-
-constexpr size_t kQueuesWidth = kGrappleVTs * 2 * kGrappleN * kGrappleN;
-constexpr size_t kQueuesVTWidth = 2 * kGrappleN * kGrappleN;
-constexpr size_t kQueuesPhaseWidth = kGrappleN * kGrappleN;
-constexpr size_t kQueuesQueuesWidth = kGrappleN;
-
-/* The 1D size of Grapple queues
- *
- * The queue is of size kGrappleVTs x 2 x kGrappleN x kGrappleN, but we only
- * allocate a 1D array and calculate the addresses using `qAddr`.
- */
-// TODO check alignment: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#device-memory-accesses
-constexpr size_t kQueuesSize = kQueuesWidth * sizeof(Queue);
-
-constexpr size_t kHashPrimersWidth = kGrappleVTs * 3;
-constexpr size_t kHashPrimersSize = kHashPrimersWidth * sizeof(int);
 
 /**
  * Map the 4D queue array indices onto a 1D array
@@ -57,7 +38,7 @@ __device__ inline size_t qAddr(size_t vt, size_t t, size_t x, size_t y)
  * @param t A pointer to the current algorithm phase
  * @returns Whether the next phase has no work to do
  */
-__device__ bool check_done(Queue *queue, int *t)
+__device__ bool check_done(StateQueue *queue, int *t)
 {
   bool done = true;
 
@@ -87,10 +68,10 @@ done:
  * @param output The violations output buffer
  */
 __global__ void
-Grapple(unsigned int runIdx, Queue *queue, int *hashPrimers, State initialState, ViolationOutputBuffer *output)
+Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, State initialState, ViolationOutputBuffer *output)
 {
   // The hashtable which tracks already visited states
-  __shared__ Hashtable table;
+  __shared__ StateHashtable table;
 
   // The queue we are working on right now
   __shared__ int t;
@@ -124,7 +105,7 @@ Grapple(unsigned int runIdx, Queue *queue, int *hashPrimers, State initialState,
     for (int i = 0; i < kGrappleN; i += 1)
     {
       // For each state in the input queue, until the queue is empty
-      Queue *q = &queue[qAddr(blockIdx.x, t, threadIdx.x, i)];
+      StateQueue *q = &queue[qAddr(blockIdx.x, t, threadIdx.x, i)];
       while (!q->empty())
       {
         // Pop the state from the queue
@@ -166,7 +147,7 @@ Grapple(unsigned int runIdx, Queue *queue, int *hashPrimers, State initialState,
 
                 // printf("Thread %i adds state %i to thread %i.\n", threadIdx.x, successor.state, next_output_i);
 
-                Queue *out = &queue[qAddr(blockIdx.x, (1 - t), next_output_i, threadIdx.x)];
+                StateQueue *out = &queue[qAddr(blockIdx.x, (1 - t), next_output_i, threadIdx.x)];
                 out->push(successor);
               }
             }
@@ -200,7 +181,7 @@ runGrapple(unsigned int runIdx, State initialState, std::mt19937 *gen, cudaStrea
   int blocks_per_grid = kGrappleVTs;
 
   // Allocate global device memory for queues
-  Queue *d_queue;
+  StateQueue *d_queue;
   gpuErrchk(cudaMallocAsync(&d_queue, kQueuesSize, *stream));
   gpuErrchk(cudaMemsetAsync(d_queue, 0, kQueuesSize, *stream));
 

@@ -3,7 +3,9 @@
 
 #include <memory>
 
+#include "Hashtable.cuh"
 #include "OutputBuffer.cuh"
+#include "Queue.cuh"
 #include "State.cuh"
 
 // Amount of parallel verification tests. Each corresponds to a CUDA block
@@ -14,6 +16,41 @@ constexpr int kGrappleN = 32;
 
 // Capacity of the violations output buffer, i.e. the maximum number of violations a single VT can report
 constexpr unsigned int kViolationsOutputBufferSize = 256;
+
+/**
+ * The amount of states that can be marked in a hash table, as a power of two
+ * 2^13*32/8000 = 32.768 kilobyte
+ */
+constexpr unsigned int kHashtableCapacity = 18;
+
+/**
+ * A single queue's capacity
+ *
+ * Implemented as a `constexpr` instead of a template class parameter so we do
+ * not have to deal with non-specialized template compilation problems.
+ * See https://stackoverflow.com/a/10632266
+ */
+constexpr unsigned int kQueueCapacity = 4;
+
+using StateHashtable = Hashtable<State, kHashtableCapacity>;
+using StateQueue = Queue<State, kQueueCapacity>;
+
+constexpr size_t kQueuesWidth = kGrappleVTs * 2 * kGrappleN * kGrappleN;
+constexpr size_t kQueuesVTWidth = 2 * kGrappleN * kGrappleN;
+constexpr size_t kQueuesPhaseWidth = kGrappleN * kGrappleN;
+constexpr size_t kQueuesQueuesWidth = kGrappleN;
+
+/**
+ * The 1D size of Grapple queues
+ *
+ * The queue is of size kGrappleVTs x 2 x kGrappleN x kGrappleN, but we only
+ * allocate a 1D array and calculate the addresses using `qAddr`.
+ */
+// TODO check alignment: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#device-memory-accesses
+constexpr size_t kQueuesSize = kQueuesWidth * sizeof(StateQueue);
+
+constexpr size_t kHashPrimersWidth = kGrappleVTs * 3;
+constexpr size_t kHashPrimersSize = kHashPrimersWidth * sizeof(int);
 
 /**
  * A violation, found by a Grapple VT
