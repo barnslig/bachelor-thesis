@@ -98,12 +98,11 @@ struct GrappleOutput
  * Run the Grapple model checker on the GPU
  *
  * @param runIdx Idx of the program execution
- * @param initialState The initial state
  * @param distrib A uniform distribution to draw hash function parameters from
  * @param stream The CUDA stream in which we should execute the kernel
  * @returns The output of the VTs
  */
 std::shared_ptr<GrappleOutput>
-runGrapple(unsigned int runIdx, State initialState, std::mt19937 *gen, cudaStream_t *stream);
+runGrapple(unsigned int runIdx, std::mt19937 *gen, cudaStream_t *stream);
 
 #endif // GRAPPLE_CUH_

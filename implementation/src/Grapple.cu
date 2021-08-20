@@ -64,11 +64,10 @@ done:
  * @param runIdx Idx of the program execution
  * @param queue A pointer to the multidimensional queues
  * @param hashPrimers A pointer to an array containing three hash primers per block
- * @param initialState The initial state
  * @param output The violations output buffer
  */
 __global__ void
-Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, State initialState, ViolationOutputBuffer *output)
+Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, ViolationOutputBuffer *output)
 {
   // The hashtable which tracks already visited states
   __shared__ StateHashtable table;
@@ -85,7 +84,7 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, State initialS
     memset(&table, 0, sizeof(table));
     t = 0;
     rounds = 0;
-    queue[qAddr(blockIdx.x, t, threadIdx.x, 0)].push(initialState);
+    queue[qAddr(blockIdx.x, t, threadIdx.x, 0)].push(State{});
   }
 
   // Sync all threads after initial variable setup
@@ -175,7 +174,7 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, State initialS
 }
 
 std::shared_ptr<GrappleOutput>
-runGrapple(unsigned int runIdx, State initialState, std::mt19937 *gen, cudaStream_t *stream)
+runGrapple(unsigned int runIdx, std::mt19937 *gen, cudaStream_t *stream)
 {
   int threads_per_block = kGrappleN;
   int blocks_per_grid = kGrappleVTs;
@@ -212,7 +211,7 @@ runGrapple(unsigned int runIdx, State initialState, std::mt19937 *gen, cudaStrea
   gpuErrchk(cudaMemsetAsync(d_output, 0, sizeof(ViolationOutputBuffer), *stream));
 
   // Run the kernel
-  Grapple<<<blocks_per_grid, threads_per_block, 0, *stream>>>(runIdx, d_queue, d_hash_primers, initialState, d_output);
+  Grapple<<<blocks_per_grid, threads_per_block, 0, *stream>>>(runIdx, d_queue, d_hash_primers, d_output);
 
   // Copy discovered violations back to host
   ViolationOutputBuffer h_output;

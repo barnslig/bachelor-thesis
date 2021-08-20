@@ -64,7 +64,7 @@ int main(int argc, char *const argv[])
      */
     cudaStreamCreate(&stream[i]);
 
-    out = runGrapple(i, State{0}, &gen, &stream[i]);
+    out = runGrapple(i, &gen, &stream[i]);
     while (!out->violations->empty())
     {
       Violation *v = out->violations->pop();
