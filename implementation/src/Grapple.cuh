@@ -6,7 +6,7 @@
 #include "Hashtable.cuh"
 #include "OutputBuffer.cuh"
 #include "Queue.cuh"
-#include "State.cuh"
+#include "models/WaypointsState.cuh"
 
 // Amount of parallel verification tests. Each corresponds to a CUDA block
 constexpr int kGrappleVTs = 250;
@@ -32,6 +32,7 @@ constexpr unsigned int kHashtableCapacity = 18;
  */
 constexpr unsigned int kQueueCapacity = 4;
 
+using State = WaypointsState;
 using StateHashtable = Hashtable<State, kHashtableCapacity>;
 using StateQueue = Queue<State, kQueueCapacity>;
 

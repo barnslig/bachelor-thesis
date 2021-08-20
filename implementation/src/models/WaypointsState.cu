@@ -1,18 +1,13 @@
 #include <cstdio>
 
-#include "State.cuh"
+#include "WaypointsState.cuh"
 
-__host__ __device__ void State::successor_generation(State *successor, unsigned int process, unsigned int ndc)
+__host__ __device__ void WaypointsState::successor_generation(WaypointsState *successor, unsigned int process, unsigned int ndc)
 {
   successor->state = state | 1 << ((4 * process) + ndc);
 }
 
-__host__ std::string State::str()
-{
-  return std::to_string(state);
-}
-
-__host__ __device__ bool State::violates()
+__host__ __device__ bool WaypointsState::violates()
 {
   /* How to generate 100 random 32 bit integers using numpy:
    *
@@ -123,4 +118,9 @@ __host__ __device__ bool State::violates()
                (state == -265091042) +
                (state == 1933187888) +
                (state == 1725002572));
+}
+
+__host__ std::string WaypointsState::str()
+{
+  return std::to_string(state);
 }

@@ -113,10 +113,10 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, ViolationOutpu
         // printf("Thread %i, State %i, addr: %i\n", threadIdx.x, s->state, qAddr(blockIdx.x, t, threadIdx.x, i));
 
         // For each process in the model
-        for (unsigned int p = 0; p < 8; p += 1)
+        for (unsigned int p = 0; p < State::kProcesses; p += 1)
         {
           // For each nondeterministic choice in the process
-          for (unsigned int ndc = 0; ndc < 4; ndc += 1)
+          for (unsigned int ndc = 0; ndc < State::kNondeterministicChoices; ndc += 1)
           {
             /* Generate a successor of the state from the input queue
              *

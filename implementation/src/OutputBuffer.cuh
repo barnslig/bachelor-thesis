@@ -9,7 +9,6 @@
 #include <iostream>
 
 #include "CudaHelper.cuh"
-#include "State.cuh"
 
 /**
  * A fixed-capacity fifo buffer, to be used as CUDA kernel output buffer
