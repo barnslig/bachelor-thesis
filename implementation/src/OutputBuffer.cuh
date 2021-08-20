@@ -27,6 +27,9 @@
  *  3) Drop the buffer
  * Do NOT mix push and pop! To reuse a buffer, ALWAYS `memset` its
  * memory to 0!
+ *
+ * @tparam T The type of the elements hold by the buffer
+ * @tparam N The buffer's capacity
  */
 template <typename T, unsigned int N>
 class OutputBuffer

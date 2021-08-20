@@ -15,7 +15,7 @@ TEST(OutputBuffer, SimplePushAndPop)
   EXPECT_TRUE(buf.empty());
 }
 
-TEST(OutputBuffer, FullBufferDropsNewStates)
+TEST(OutputBuffer, FullBufferDropsNewElements)
 {
   TestOutputBuffer buf = {};
 
