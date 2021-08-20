@@ -118,8 +118,13 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, ViolationOutpu
           // For each nondeterministic choice in the process
           for (unsigned int ndc = 0; ndc < 4; ndc += 1)
           {
-            // Generate a successor of the state from the input queue
-            State successor;
+            /* Generate a successor of the state from the input queue
+             *
+             * We call the copy constructor to inherit the current
+             * state. This is important as e.g. the dining philosophers
+             * model only changes a few bits on the successor.
+             */
+            State successor(*s);
             s->successor_generation(&successor, p, ndc);
             bool is_visited = table.markVisited(&successor, a, b, c);
 
