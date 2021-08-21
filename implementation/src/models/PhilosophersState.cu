@@ -99,16 +99,12 @@ __host__ std::string PhilosophersState::str()
   std::ostringstream ss;
   for (int i = 0; i < kProcesses; i += 1)
   {
-    ss << (int)state[i] << ",";
+    ss << (int)state[i];
   }
   ss << "|";
   for (int i = 0; i < kProcesses; i += 1)
   {
     ss << (int)fork[i];
-    if (i != kProcesses - 1)
-    {
-      ss << ",";
-    }
   }
   return ss.str();
 }

@@ -45,7 +45,7 @@ int main(int argc, char *const argv[])
     }
   }
 
-  std::cout << "run, block, thread, state, uniques, visited, visited_percent, vts\n";
+  std::cout << "run,block,thread,state,uniques,visited,visited_percent,vts\n";
 
   std::mt19937 gen(argSeed);
 
@@ -87,13 +87,13 @@ int main(int argc, char *const argv[])
       unique_violations.insert(v->state.str());
       std::cout
           << v->run
-          << ", "
+          << ","
           << v->block
-          << ", "
+          << ","
           << v->thread
-          << ", "
+          << ","
           << v->state.str()
-          << ", "
+          << ","
           << unique_violations.size()
           << ",,,\n";
     }
