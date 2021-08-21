@@ -38,9 +38,13 @@ target_link_libraries(PhilosophersState_test gtest_main)
 add_executable(WaypointsState_test src/models/WaypointsState_test.cu src/models/WaypointsState.cu)
 target_link_libraries(WaypointsState_test gtest_main)
 
+add_executable(HyperLogLog_test src/HyperLogLog_test.cu src/JenkinsHash.cu)
+target_link_libraries(HyperLogLog_test gtest_main)
+
 include(GoogleTest)
 gtest_discover_tests(Hashtable_test)
 gtest_discover_tests(Queue_test)
 gtest_discover_tests(OutputBuffer_test)
 gtest_discover_tests(PhilosophersState_test)
 gtest_discover_tests(WaypointsState_test)
+gtest_discover_tests(HyperLogLog_test)

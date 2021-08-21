@@ -45,7 +45,7 @@ int main(int argc, char *const argv[])
     }
   }
 
-  std::cout << "run, block, thread, state, uniques\n";
+  std::cout << "run, block, thread, state, uniques, visited, visited_percent, vts\n";
 
   std::mt19937 gen(argSeed);
 
@@ -57,6 +57,9 @@ int main(int argc, char *const argv[])
   // Set of all discovered violations. Used to track number of unique violations
   std::unordered_set<std::string> unique_violations;
 
+  // HyperLogLog counter into which we merge all other counters
+  StateCounter global_visited;
+
   for (unsigned int i = 0; i < argRuns; i += 1)
   {
     /* Each Grapple run gets assigned to a different CUDA stream to achieve
@@ -65,6 +68,19 @@ int main(int argc, char *const argv[])
     cudaStreamCreate(&stream[i]);
 
     out = runGrapple(i, &gen, &stream[i]);
+
+    global_visited.merge(*out->visited.get());
+    double estimate = global_visited.estimate();
+    double visitedPercent = estimate / State::kStateSpaceSize * 100;
+    std::cout
+        << ",,,,,"
+        << estimate
+        << ","
+        << visitedPercent
+        << ","
+        << (i + 1) * 250
+        << "\n";
+
     while (!out->violations->empty())
     {
       Violation *v = out->violations->pop();
@@ -79,7 +95,7 @@ int main(int argc, char *const argv[])
           << v->state.str()
           << ", "
           << unique_violations.size()
-          << "\n";
+          << ",,,\n";
     }
   }
 

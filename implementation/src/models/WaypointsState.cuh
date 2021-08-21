@@ -23,6 +23,7 @@ class WaypointsState : public BaseState<WaypointsState>
   public:
   static const unsigned int kProcesses = 8;
   static const unsigned int kNondeterministicChoices = 4;
+  static const unsigned int kStateSpaceSize = 4294967295;
 
   __host__ __device__ WaypointsState() : state(0){};
 

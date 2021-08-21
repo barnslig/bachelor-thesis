@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "Hashtable.cuh"
+#include "HyperLogLog.cuh"
 #include "OutputBuffer.cuh"
 #include "Queue.cuh"
 #include "models/PhilosophersState.cuh"
@@ -33,9 +34,15 @@ constexpr unsigned int kHashtableCapacity = 18;
  */
 constexpr unsigned int kQueueCapacity = 4;
 
+/**
+ * The size of the HyperLogLog register, as the power of two, i.e. 2^10
+ */
+constexpr unsigned int kHyperLogLogRegisters = 10;
+
 using State = WaypointsState; // PhilosophersState;
 using StateHashtable = Hashtable<State, kHashtableCapacity>;
 using StateQueue = Queue<State, kQueueCapacity>;
+using StateCounter = HyperLogLog<State, sizeof(State), kHyperLogLogRegisters>;
 
 constexpr size_t kQueuesWidth = kGrappleVTs * 2 * kGrappleN * kGrappleN;
 constexpr size_t kQueuesVTWidth = 2 * kGrappleN * kGrappleN;
@@ -94,6 +101,11 @@ struct GrappleOutput
    * Discovered violations
    */
   std::shared_ptr<ViolationOutputBuffer> violations;
+
+  /**
+   * HyperLogLog visited states counter
+   */
+  std::shared_ptr<StateCounter> visited;
 };
 
 /**

@@ -64,10 +64,11 @@ done:
  * @param runIdx Idx of the program execution
  * @param queue A pointer to the multidimensional queues
  * @param hashPrimers A pointer to an array containing three hash primers per block
+ * @param counter A HyperLogLog counter in which the visited states are counted
  * @param output The violations output buffer
  */
 __global__ void
-Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, ViolationOutputBuffer *output)
+Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, StateCounter *counter, ViolationOutputBuffer *output)
 {
   // The hashtable which tracks already visited states
   __shared__ StateHashtable table;
@@ -133,6 +134,8 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, ViolationOutpu
             // By now, we only care about unvisited states
             if (!is_visited)
             {
+              counter->add(&successor);
+
               if (successor.violates())
               {
                 // When finding a violation (= a waypoint), report it
@@ -210,13 +213,22 @@ runGrapple(unsigned int runIdx, std::mt19937 *gen, cudaStream_t *stream)
   }
   gpuErrchk(cudaMemcpyAsync(d_hash_primers, h_hash_primers, kHashPrimersSize, cudaMemcpyHostToDevice, *stream));
 
+  // Create a HyperLogLog counter for visited states
+  StateCounter h_counter;
+  StateCounter *d_counter;
+  gpuErrchk(cudaMallocAsync(&d_counter, sizeof(StateCounter), *stream));
+  gpuErrchk(cudaMemcpyAsync(d_counter, &h_counter, sizeof(StateCounter), cudaMemcpyHostToDevice, *stream));
+
   // Create an output buffer for discovered violations
   ViolationOutputBuffer *d_output;
   gpuErrchk(cudaMallocAsync(&d_output, sizeof(ViolationOutputBuffer), *stream));
   gpuErrchk(cudaMemsetAsync(d_output, 0, sizeof(ViolationOutputBuffer), *stream));
 
   // Run the kernel
-  Grapple<<<blocks_per_grid, threads_per_block, 0, *stream>>>(runIdx, d_queue, d_hash_primers, d_output);
+  Grapple<<<blocks_per_grid, threads_per_block, 0, *stream>>>(runIdx, d_queue, d_hash_primers, d_counter, d_output);
+
+  // Copy HyperLogLog counter of visited states back to host
+  gpuErrchk(cudaMemcpyAsync(&h_counter, d_counter, sizeof(StateCounter), cudaMemcpyDeviceToHost, *stream));
 
   // Copy discovered violations back to host
   ViolationOutputBuffer h_output;
@@ -225,11 +237,13 @@ runGrapple(unsigned int runIdx, std::mt19937 *gen, cudaStream_t *stream)
   // Free global memory allocated by `cudaMalloc`
   gpuErrchk(cudaFreeAsync(d_queue, *stream));
   gpuErrchk(cudaFreeAsync(d_hash_primers, *stream));
+  gpuErrchk(cudaFreeAsync(d_counter, *stream));
   gpuErrchk(cudaFreeAsync(d_output, *stream));
 
   // Create and return the output struct
   GrappleOutput out = {
       .violations = std::make_shared<ViolationOutputBuffer>(h_output),
+      .visited = std::make_shared<StateCounter>(h_counter),
   };
   return std::make_shared<GrappleOutput>(out);
 }

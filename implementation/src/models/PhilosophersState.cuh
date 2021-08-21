@@ -33,6 +33,11 @@ class PhilosophersState : public BaseState<PhilosophersState>
   static const unsigned int kNondeterministicChoices = 1;
 
   /**
+   * The total state space size
+   */
+  static const unsigned int kStateSpaceSize = 14348906; // pow(3, kProcesses) - 1;
+
+  /**
    * The current state of each philosopher in the model
    */
   PhilosophersStatesEnum state[kProcesses];

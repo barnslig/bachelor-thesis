@@ -27,6 +27,11 @@ class BaseState
   static const unsigned int kNondeterministicChoices;
 
   /**
+   * The total state space size
+   */
+  static const unsigned int kStateSpaceSize;
+
+  /**
    * Create a state successor
    *
    * @param successor The pointer to a state instance that the successor is written into
