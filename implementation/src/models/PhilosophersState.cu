@@ -66,8 +66,8 @@ __host__ __device__ void PhilosophersState::successor_generation(PhilosophersSta
 __host__ __device__ bool PhilosophersState::violates()
 {
   /**
-     * Whether all philosophers are holding only the left fork
-     */
+   * Whether all philosophers are holding only the left fork
+   */
   bool allHaveOne = true;
   for (int i = 0; i < kProcesses; i += 1)
   {
@@ -79,8 +79,8 @@ __host__ __device__ bool PhilosophersState::violates()
   }
 
   /**
-     * Whether all forks are picked up
-     */
+   * Whether all forks are picked up
+   */
   bool allForksTaken = true;
   for (int i = 0; i < kProcesses; i += 1)
   {
