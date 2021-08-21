@@ -1,6 +1,7 @@
 #ifndef CUDA_HELPER_CUH_
 #define CUDA_HELPER_CUH_
 
+#include <cstdio>
 #include <cuda_runtime.h>
 
 /**
