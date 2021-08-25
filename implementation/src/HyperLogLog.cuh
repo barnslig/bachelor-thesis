@@ -18,12 +18,12 @@ constexpr unsigned int kHllHashSeed = 313;
 constexpr double kPow_2_32 = 4294967296.0;     ///< 2^32
 constexpr double kNegPow_2_32 = -4294967296.0; ///< -(2^32)
 
-__host__ __device__ inline int myClz(int x, int b)
+__host__ __device__ inline int myClz(int x)
 {
 #ifdef __CUDA_ARCH__
-  return min(b, __clz(x)) + 1;
+  return __clz(x);
 #else // just hope that we are in g++/clang
-  return min(b, __builtin_clz(x)) + 1;
+  return __builtin_clz(x);
 #endif
 }
 
@@ -94,7 +94,7 @@ class HyperLogLog
     uint32_t hash = jenkins_hash(reinterpret_cast<uint8_t *>(elem), Tsize, 0x9e3779b9, 0x9e3779b9, kHllHashSeed);
 
     uint32_t index = hash >> (32 - B);
-    uint8_t rank = myClz((hash << B), 32 - B);
+    uint8_t rank = min(32 - B, myClz(hash << B)) + 1;
     if (rank > M_[index])
     {
       M_[index] = rank;
