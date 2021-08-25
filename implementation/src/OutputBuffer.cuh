@@ -65,7 +65,7 @@ class OutputBuffer
     }
 
     // The atomic increment saves us from thread synchronization issues
-    unsigned int next = myAtomicInc(&tail, 1);
+    unsigned int next = myAtomicInc(&tail, N);
     elems[next] = el;
   }
 

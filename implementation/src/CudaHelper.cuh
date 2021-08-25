@@ -50,7 +50,7 @@ __host__ __device__ inline unsigned int myAtomicInc(unsigned int *address, unsig
   return atomicInc(address, val);
 #else
   unsigned int old = *address;
-  *address += val;
+  *address = ((old >= val) ? 0 : (old + 1));
   return old;
 #endif
 }
