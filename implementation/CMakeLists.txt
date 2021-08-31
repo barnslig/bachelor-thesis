@@ -11,7 +11,7 @@ set(CMAKE_CUDA_SEPARABLE_COMPILATION True)
 # makes nvcc mad
 # add_compile_options(-Wall -Wextra -pedantic -Werror)
 
-add_executable(grapple src/main.cu src/Grapple.cu src/JenkinsHash.cu src/models/WaypointsState.cu src/models/PhilosophersState.cu)
+add_executable(grapple src/main.cu src/Grapple.cu src/JenkinsHash.cu src/MurMurHash3.cu src/models/WaypointsState.cu src/models/PhilosophersState.cu)
 
 ## Unit Tests ##
 include(FetchContent)
@@ -38,7 +38,7 @@ target_link_libraries(PhilosophersState_test gtest_main)
 add_executable(WaypointsState_test src/models/WaypointsState_test.cu src/models/WaypointsState.cu)
 target_link_libraries(WaypointsState_test gtest_main)
 
-add_executable(HyperLogLog_test src/HyperLogLog_test.cu src/JenkinsHash.cu)
+add_executable(HyperLogLog_test src/HyperLogLog_test.cu src/MurMurHash3.cu)
 target_link_libraries(HyperLogLog_test gtest_main)
 
 include(GoogleTest)
