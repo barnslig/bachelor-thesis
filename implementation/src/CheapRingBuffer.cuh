@@ -39,6 +39,11 @@ class CheapRingBuffer
    */
   unsigned int tail = 0;
 
+  /**
+   * Number of currently stored elements
+   */
+  unsigned int numElems = 0;
+
   public:
   /**
    * Insert an element
@@ -50,6 +55,8 @@ class CheapRingBuffer
    */
   __host__ __device__ void push(T el)
   {
+    numElems = min(N, numElems + 1);
+
     unsigned int old = tail;
     tail = (tail + 1) % N;
     elems[old] = el;
@@ -64,11 +71,16 @@ class CheapRingBuffer
    */
   __host__ __device__ T *pop()
   {
-    if (head == N)
+    if (numElems == 0)
     {
       return nullptr;
     }
-    return &elems[head++];
+
+    numElems -= 1;
+
+    unsigned int old = head;
+    head = (head + 1) % N;
+    return &elems[old];
   }
 
   /**
@@ -78,7 +90,7 @@ class CheapRingBuffer
    */
   __host__ __device__ bool empty()
   {
-    return head == N;
+    return numElems == 0;
   }
 
   /**
@@ -89,6 +101,7 @@ class CheapRingBuffer
     memset(elems, 0, N);
     head = 0;
     tail = 0;
+    numElems = 0;
   }
 };
 
