@@ -48,7 +48,7 @@ class Hashtable
    */
   __host__ __device__ bool markVisited(T *elem, int a, int b, int c)
   {
-    uint32_t elem_hash = jenkins_hash(reinterpret_cast<uint8_t *>(elem), sizeof(T), a, b, c) & hashmask(N);
+    uint32_t elem_hash = jenkins_hash(elem, sizeof(T), a, b, c) & hashmask(N);
 
     /* Each hash bucket can store 32 bits, each representing whether an
      * element is already visited or not. Thus, we have to divide the

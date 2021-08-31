@@ -83,6 +83,6 @@ __host__ __device__ inline void mix(uint32_t *a, uint32_t *b, uint32_t *c);
  * @param c Any 4-byte value
  * @returns The hash
  */
-__host__ __device__ uint32_t jenkins_hash(uint8_t *k, uint32_t length, uint32_t a, uint32_t b, uint32_t c);
+__host__ __device__ uint32_t jenkins_hash(const void *k, uint32_t length, uint32_t a, uint32_t b, uint32_t c);
 
 #endif // JENKINS_HASH_CUH_
