@@ -66,13 +66,14 @@ class Queue
    * New elements are silently dropped when the queue is full.
    *
    * @param elem The element to push into the queue
+   * @returns The pointer to the stored element
    */
-  __host__ __device__ void push(T elem)
+  __host__ __device__ T *push(T elem)
   {
     if (tail == &elems[N - 1])
     {
       // Drop new elements when the queue is full
-      return;
+      return nullptr;
     }
 
     /* On an empty queue, the next elem is the first memory address of
@@ -97,13 +98,15 @@ class Queue
     }
 
     /* When the queue is not empty, we have to update the tail and the current
-   * tail's successor
-   */
+     * tail's successor
+     */
     else
     {
       tail->next = nextElem;
       tail = nextElem;
     }
+
+    return &nextElem->elem;
   }
 
   /**
@@ -143,6 +146,16 @@ class Queue
   __host__ __device__ bool empty() const
   {
     return !head && !tail;
+  }
+
+  /**
+   * Clear the queue: Removes all entries
+   */
+  __host__ __device__ void clear()
+  {
+    memset(elems, 0, N);
+    head = nullptr;
+    tail = nullptr;
   }
 };
 

@@ -3,6 +3,7 @@
 
 #include <memory>
 
+#include "CheapRingBuffer.cuh"
 #include "Hashtable.cuh"
 #include "HyperLogLog.cuh"
 #include "OutputBuffer.cuh"
@@ -16,6 +17,19 @@ constexpr int kGrappleVTs = 250;
 // Amount of threads in a verification test. Each corresponds to a CUDA thread in a CUDA block
 constexpr int kGrappleN = 32;
 
+/**
+ * Times a VT may start over the search
+ *
+ * A "start over" happens when the VT is "done", i.e. the hash table
+ * is full and every new state seems to be already visited. Then,
+ * the hash table is cleared and the last set of visited, non-violating
+ * states is used to start a new search within the same VT.
+ *
+ * To keep the algorithm terminating, this constant defines how often
+ * it may start over.
+ */
+constexpr unsigned int kStartOvers = 10;
+
 // Capacity of the violations output buffer, i.e. the maximum number of violations a single VT can report
 constexpr unsigned int kViolationsOutputBufferSize = 256;
 
@@ -23,7 +37,7 @@ constexpr unsigned int kViolationsOutputBufferSize = 256;
  * The amount of states that can be marked in a hash table, as a power of two
  * 2^13*32/8000 = 32.768 kilobyte
  */
-constexpr unsigned int kHashtableCapacity = 18;
+constexpr unsigned int kHashtableCapacity = 14;
 
 /**
  * A single queue's capacity
@@ -43,6 +57,7 @@ using State = WaypointsState; // PhilosophersState;
 using StateHashtable = Hashtable<State, kHashtableCapacity>;
 using StateQueue = Queue<State, kQueueCapacity>;
 using StateCounter = HyperLogLog<State, sizeof(State), kHyperLogLogRegisters>;
+using StateRingBuffer = CheapRingBuffer<State *, kQueueCapacity>;
 
 constexpr size_t kQueuesWidth = kGrappleVTs * 2 * kGrappleN * kGrappleN;
 constexpr size_t kQueuesVTWidth = 2 * kGrappleN * kGrappleN;

@@ -32,6 +32,9 @@ target_link_libraries(Queue_test gtest_main)
 add_executable(OutputBuffer_test src/OutputBuffer_test.cu)
 target_link_libraries(OutputBuffer_test gtest_main)
 
+add_executable(CheapRingBuffer_test src/CheapRingBuffer_test.cu )
+target_link_libraries(CheapRingBuffer_test gtest_main)
+
 add_executable(PhilosophersState_test src/models/PhilosophersState_test.cu src/models/PhilosophersState.cu)
 target_link_libraries(PhilosophersState_test gtest_main)
 
@@ -45,6 +48,7 @@ include(GoogleTest)
 gtest_discover_tests(Hashtable_test)
 gtest_discover_tests(Queue_test)
 gtest_discover_tests(OutputBuffer_test)
+gtest_discover_tests(CheapRingBuffer_test)
 gtest_discover_tests(PhilosophersState_test)
 gtest_discover_tests(WaypointsState_test)
 gtest_discover_tests(HyperLogLog_test)

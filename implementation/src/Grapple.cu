@@ -91,89 +91,125 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, StateCounter *
   // Sync all threads after initial variable setup
   __syncthreads();
 
+  /* The ring buffer holding the last set of newly visited states.
+   * Used for the "start over" strategy.
+   */
+  StateRingBuffer startOverInitials = {};
+
   int a = hashPrimers[blockIdx.x];
   int b = hashPrimers[blockIdx.x + 1];
   int c = hashPrimers[blockIdx.x + 2];
 
-  bool done = false;
-  while (!done)
+  for (unsigned int startOvers = 0; startOvers <= kStartOvers; startOvers += 1)
   {
-    // The idx of the next thread which gets new states pushed into its queue
-    int next_output_i = 0;
-
-    // For each input queue of this thread
-    for (int i = 0; i < kGrappleN; i += 1)
+    bool done = false;
+    while (!done)
     {
-      // For each state in the input queue, until the queue is empty
-      StateQueue *q = &queue[qAddr(blockIdx.x, t, threadIdx.x, i)];
-      while (!q->empty())
+      // The idx of the next thread which gets new states pushed into its queue
+      int next_output_i = 0;
+
+      // For each input queue of this thread
+      for (int i = 0; i < kGrappleN; i += 1)
       {
-        // Pop the state from the queue
-        State *s = q->pop();
-
-        // printf("Thread %i, State %i, addr: %i\n", threadIdx.x, s->state, qAddr(blockIdx.x, t, threadIdx.x, i));
-
-        // For each process in the model
-        for (unsigned int p = 0; p < State::kProcesses; p += 1)
+        // For each state in the input queue, until the queue is empty
+        StateQueue *q = &queue[qAddr(blockIdx.x, t, threadIdx.x, i)];
+        while (!q->empty())
         {
-          // For each nondeterministic choice in the process
-          for (unsigned int ndc = 0; ndc < State::kNondeterministicChoices; ndc += 1)
+          // Pop the state from the queue
+          State *s = q->pop();
+
+          // printf("Thread %i, State %i, addr: %i\n", threadIdx.x, s->state, qAddr(blockIdx.x, t, threadIdx.x, i));
+
+          // For each process in the model
+          for (unsigned int p = 0; p < State::kProcesses; p += 1)
           {
-            /* Generate a successor of the state from the input queue
-             *
-             * We call the copy constructor to inherit the current
-             * state. This is important as e.g. the dining philosophers
-             * model only changes a few bits on the successor.
-             */
-            State successor(*s);
-            s->successor_generation(&successor, p, ndc);
-            bool is_visited = table.markVisited(&successor, a, b, c);
-
-            // printf("Thread %i: State %i visited: %i\n", threadIdx.x, successor.state, is_visited);
-
-            // By now, we only care about unvisited states
-            if (!is_visited)
+            // For each nondeterministic choice in the process
+            for (unsigned int ndc = 0; ndc < State::kNondeterministicChoices; ndc += 1)
             {
-              counter->add(&successor);
+              /* Generate a successor of the state from the input queue
+               *
+               * We call the copy constructor to inherit the current
+               * state. This is important as e.g. the dining philosophers
+               * model only changes a few bits on the successor.
+               */
+              State successor(*s);
+              s->successor_generation(&successor, p, ndc);
+              bool is_visited = table.markVisited(&successor, a, b, c);
 
-              if (successor.violates())
+              // printf("Thread %i: State %i visited: %i\n", threadIdx.x, successor.state, is_visited);
+
+              // By now, we only care about unvisited states
+              if (!is_visited)
               {
-                // When finding a violation (= a waypoint), report it
-                Violation v = {
-                    .run = runIdx,
-                    .block = blockIdx.x,
-                    .thread = threadIdx.x,
-                    .state = successor,
-                };
-                output->push(v);
-              }
-              else
-              {
-                // TODO pick next random output queue i. By now we dont care and cycle through a counter
-                next_output_i = (next_output_i + 1) % kGrappleN;
+                counter->add(&successor);
 
-                // printf("Thread %i adds state %i to thread %i.\n", threadIdx.x, successor.state, next_output_i);
+                if (successor.violates())
+                {
+                  // When finding a violation (= a waypoint), report it
+                  Violation v = {
+                      .run = runIdx,
+                      .block = blockIdx.x,
+                      .thread = threadIdx.x,
+                      .state = successor,
+                  };
+                  output->push(v);
+                }
+                else
+                {
+                  // TODO pick next random output queue i. By now we dont care and cycle through a counter
+                  next_output_i = (next_output_i + 1) % kGrappleN;
 
-                StateQueue *out = &queue[qAddr(blockIdx.x, (1 - t), next_output_i, threadIdx.x)];
-                out->push(successor);
+                  // printf("Thread %i adds state %i to thread %i.\n", threadIdx.x, successor.state, next_output_i);
+
+                  StateQueue *out = &queue[qAddr(blockIdx.x, (1 - t), next_output_i, threadIdx.x)];
+                  State *qSuccessor = out->push(successor);
+
+                  startOverInitials.push(qSuccessor);
+                }
               }
             }
           }
         }
       }
+
+      // Sync all threads before swapping queues
+      __syncthreads();
+
+      done = check_done(queue, &t);
+
+      // Swap queues
+      if (threadIdx.x == 0)
+      {
+        rounds += 1;
+        t = 1 - t;
+      }
+
+      __syncthreads();
     }
 
-    // Sync all threads before swapping queues
+    /* Start over when all threads are done. We need to sync so we do
+     * not reset our shared hash table before everyone is done.
+     */
     __syncthreads();
 
-    done = check_done(queue, &t);
+    // Pretend we are not done :)
+    done = false;
 
-    // Swap queues
-    if (threadIdx.x == 0)
+    // Reset hashtable
+    memset(&table, 0, sizeof(table));
+
+    /* Use last set of visited, non-violating states as new initials
+     * of each thread.
+     */
+    // TODO Can we memcpy?
+    StateQueue *q = &queue[qAddr(blockIdx.x, t, threadIdx.x, 0)];
+    q->clear();
+    while (!startOverInitials.empty())
     {
-      rounds += 1;
-      t = 1 - t;
+      State *initial = *startOverInitials.pop();
+      q->push(*initial);
     }
+    startOverInitials.clear();
 
     __syncthreads();
   }
