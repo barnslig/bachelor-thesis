@@ -51,7 +51,7 @@ constexpr unsigned int kQueueCapacity = 4;
 /**
  * The size of the HyperLogLog register, as the power of two, i.e. 2^10
  */
-constexpr unsigned int kHyperLogLogRegisters = 10;
+constexpr unsigned int kHyperLogLogRegisters = 14;
 
 using State = WaypointsState; // PhilosophersState;
 using StateHashtable = Hashtable<State, kHashtableCapacity>;

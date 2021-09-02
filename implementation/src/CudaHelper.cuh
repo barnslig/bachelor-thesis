@@ -55,4 +55,18 @@ __host__ __device__ inline unsigned int myAtomicInc(unsigned int *address, unsig
 #endif
 }
 
+/**
+ * Host-Compatible variant of the CUDA atomicMax function
+ */
+__host__ __device__ inline unsigned int myAtomicMax(unsigned int *address, unsigned int val)
+{
+#ifdef __CUDA_ARCH__
+  return atomicMax(address, val);
+#else
+  unsigned int old = *address;
+  *address = (val > old) ? val : old;
+  return old;
+#endif
+}
+
 #endif // CUDA_HELPER_CUH_

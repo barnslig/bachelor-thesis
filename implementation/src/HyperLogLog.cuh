@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstdint>
 
+#include "CudaHelper.cuh"
 #include "HyperLogLog_constants.cuh"
 #include "MurMurHash3.cuh"
 
@@ -177,19 +178,14 @@ class HyperLogLog
     uint64_t hash[2];
     MurmurHash3_128(elem, Tsize, 0, &hash);
 
-    // Truncate the MurMur3 hash to 32-bit
-    // uint32_t my_hash = hash[1] & (((uint64_t)1 << 32) - 1);
-
     // First B bytes are the index
     uint64_t index = hash[1] >> (64 - B);
 
     // Count the number of leading zeros of the remaining 64 - B bits
     uint8_t rank = myClzll(hash[1] << B) + 1;
 
-    if (rank > M_[index])
-    {
-      M_[index] = rank;
-    }
+    // M_[index] = max(rank, M_[index]);
+    myAtomicMax(&M_[index], rank);
   }
 
   /**
@@ -242,7 +238,7 @@ class HyperLogLog
     {
       if (M_[r] < other.M_[r])
       {
-        M_[r] |= other.M_[r];
+        M_[r] = other.M_[r];
       }
     }
   }
