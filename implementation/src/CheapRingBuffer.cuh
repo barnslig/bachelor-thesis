@@ -98,7 +98,7 @@ class CheapRingBuffer
    */
   __host__ __device__ void clear()
   {
-    memset(elems, 0, N);
+    memset(elems, 0, sizeof(elems));
     head = 0;
     tail = 0;
     numElems = 0;

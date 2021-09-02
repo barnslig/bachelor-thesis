@@ -153,7 +153,7 @@ class Queue
    */
   __host__ __device__ void clear()
   {
-    memset(elems, 0, N);
+    memset(elems, 0, sizeof(elems));
     head = nullptr;
     tail = nullptr;
   }

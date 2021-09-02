@@ -164,7 +164,10 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, StateCounter *
                   StateQueue *out = &queue[qAddr(blockIdx.x, (1 - t), next_output_i, threadIdx.x)];
                   State *qSuccessor = out->push(successor);
 
-                  startOverInitials.push(qSuccessor);
+                  if (qSuccessor)
+                  {
+                    startOverInitials.push(qSuccessor);
+                  }
                 }
               }
             }
