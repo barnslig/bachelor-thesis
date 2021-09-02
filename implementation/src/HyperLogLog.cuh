@@ -59,7 +59,7 @@ class HyperLogLog
     double sum = 0;
     for (int i = 0; i < m_; i++)
     {
-      sum += 1.0 / (1 << M_[i]);
+      sum += 1.0 / (1L << M_[i]);
       if (M_[i] == 0)
       {
         *num_zero += 1;
