@@ -11,6 +11,10 @@
 
 /**
  * A current state of the waypoints model
+ *
+ * The Waypoints model is described in multiple papers:
+ * - https://doi.org/10.1109/TSE.2010.110
+ * - https://doi.org/10.1007/s10009-020-00576-x
  */
 class WaypointsState : public BaseState<WaypointsState>
 {

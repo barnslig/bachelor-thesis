@@ -11,7 +11,16 @@ set(CMAKE_CUDA_SEPARABLE_COMPILATION True)
 # makes nvcc mad
 # add_compile_options(-Wall -Wextra -pedantic -Werror)
 
-add_executable(grapple src/main.cu src/Grapple.cu src/JenkinsHash.cu src/MurMurHash3.cu src/models/WaypointsState.cu src/models/PhilosophersState.cu)
+add_executable(grapple
+  src/main.cu
+  src/Grapple.cu
+  src/JenkinsHash.cu
+  src/MurMurHash3.cu
+  src/models/AndersonState.cu
+  src/models/PhilosophersState.cu
+  src/models/PhilosophersStateV2.cu
+  src/models/WaypointsState.cu
+)
 
 ## Unit Tests ##
 include(FetchContent)
@@ -44,6 +53,9 @@ target_link_libraries(WaypointsState_test gtest_main)
 add_executable(HyperLogLog_test src/HyperLogLog_test.cu src/MurMurHash3.cu)
 target_link_libraries(HyperLogLog_test gtest_main)
 
+add_executable(AndersonState_test src/models/AndersonState_test.cu src/models/AndersonState.cu)
+target_link_libraries(AndersonState_test gtest_main)
+
 include(GoogleTest)
 gtest_discover_tests(Hashtable_test)
 gtest_discover_tests(Queue_test)
@@ -52,3 +64,4 @@ gtest_discover_tests(CheapRingBuffer_test)
 gtest_discover_tests(PhilosophersState_test)
 gtest_discover_tests(WaypointsState_test)
 gtest_discover_tests(HyperLogLog_test)
+gtest_discover_tests(AndersonState_test)

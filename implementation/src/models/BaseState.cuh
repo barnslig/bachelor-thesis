@@ -8,6 +8,28 @@
 #include <string>
 
 /**
+ * Branching-Free Ternary Operator
+ *
+ * In CUDA, regular branching trough switch-/if-conditions, as usually
+ * used for FSM implementation, causes threads to pause, resulting in
+ * significant slow-down when heavily used.
+ *
+ * This method instead "calculates" all ternary operations, resulting
+ * in good use of the SIMT execution model and good CUDA performance.
+ *
+ * See https://doi.org/10.1145/2632362.2632379
+ *
+ * @param cond The condition
+ * @param valTrue The return value when `cond` evaluates to true
+ * @param valFalse The return value when `cond` evaluates to false
+ * @returns `valTrue` if `cond` evaluates to true, else `valFalse`
+ */
+__host__ __device__ inline uint8_t MyTernary(bool cond, uint8_t valTrue, uint8_t valFalse)
+{
+  return cond * valTrue + !cond * valFalse;
+}
+
+/**
  * The abstract class that all models are based on
  *
  * In order to be hashed by MurmurHash3_128, we have to align the model
