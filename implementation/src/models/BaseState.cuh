@@ -10,10 +10,13 @@
 /**
  * The abstract class that all models are based on
  *
+ * In order to be hashed by MurmurHash3_128, we have to align the model
+ * onto 64-bit.
+ *
  * @tparam T The class that inherits the BaseState, i.e. `MyState : public BaseState<MyState>`
  */
 template <typename T>
-class BaseState
+class alignas(8) BaseState
 {
   public:
   /**
