@@ -36,6 +36,8 @@ constexpr unsigned int kViolationsOutputBufferSize = 256;
 /**
  * The amount of states that can be marked in a hash table, as a power of two
  * 2^13*32/8000 = 32.768 kilobyte
+ *
+ * 18 is the maximum that fits into memory
  */
 constexpr unsigned int kHashtableCapacity = 14;
 
@@ -87,6 +89,11 @@ struct Violation
   unsigned int run;
 
   /**
+   * The number of unique states the VT has visited
+   */
+  unsigned int visitedStates;
+
+  /**
    * Idx of the block, i.e. blockIdx.x
    */
   unsigned int block;
@@ -121,6 +128,11 @@ struct GrappleOutput
    * HyperLogLog visited states counter
    */
   std::shared_ptr<StateCounter> visited;
+
+  /**
+   * Total number of visited states within all VTs of this run
+   */
+  unsigned int totalVisited;
 };
 
 /**

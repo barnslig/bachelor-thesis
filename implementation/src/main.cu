@@ -45,7 +45,7 @@ int main(int argc, char *const argv[])
     }
   }
 
-  std::cout << "run,block,thread,state,uniques,visited,visited_percent,vts\n";
+  std::cout << "run,block,thread,state,uniques,visited,visited_percent,vts,total_visited\n";
 
   std::mt19937 gen(argSeed);
 
@@ -79,6 +79,8 @@ int main(int argc, char *const argv[])
         << visitedPercent
         << ","
         << (i + 1) * 250
+        << ","
+        << out->totalVisited
         << "\n";
 
     while (!out->violations->empty())
@@ -95,7 +97,15 @@ int main(int argc, char *const argv[])
           << v->state.str()
           << ","
           << unique_violations.size()
-          << ",,,\n";
+          << ","
+          << estimate
+          << ","
+          << visitedPercent
+          << ","
+          << v->run * 250 + v->block
+          << ","
+          << out->totalVisited
+          << "\n";
     }
   }
 

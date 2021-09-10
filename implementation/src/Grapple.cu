@@ -66,9 +66,10 @@ done:
  * @param hashPrimers A pointer to an array containing three hash primers per block
  * @param counter A HyperLogLog counter in which the visited states are counted
  * @param output The violations output buffer
+ * @param totalCounter The global counter of all visited states in this run
  */
 __global__ void
-Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, StateCounter *counter, ViolationOutputBuffer *output)
+Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, StateCounter *counter, ViolationOutputBuffer *output, unsigned int *totalCounter)
 {
   // The hashtable which tracks already visited states
   __shared__ StateHashtable table;
@@ -79,12 +80,16 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, StateCounter *
   // The "rounds", i.e. toggles of t, that this block has done during execution
   __shared__ int rounds;
 
+  // The number of visited states within this VT
+  __shared__ unsigned int visitedStates;
+
   // Initialize shared variables and initial state within the first thread
   if (threadIdx.x == 0)
   {
     memset(&table, 0, sizeof(table));
     t = 0;
     rounds = 0;
+    visitedStates = 1; // Include the initial state
     queue[qAddr(blockIdx.x, t, threadIdx.x, 0)].push(State{});
   }
 
@@ -143,11 +148,15 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, StateCounter *
               {
                 counter->add(&successor);
 
+                atomicInc(&visitedStates, UINT_MAX);
+                atomicInc(totalCounter, UINT_MAX);
+
                 if (successor.violates())
                 {
                   // When finding a violation (= a waypoint), report it
                   Violation v = {
                       .run = runIdx,
+                      .visitedStates = visitedStates,
                       .block = blockIdx.x,
                       .thread = threadIdx.x,
                       .state = successor,
@@ -259,19 +268,28 @@ runGrapple(unsigned int runIdx, std::mt19937 *gen, cudaStream_t *stream)
   gpuErrchk(cudaMemcpyAsync(d_counter, &h_counter, sizeof(StateCounter), cudaMemcpyHostToDevice, *stream));
 
   // Create an output buffer for discovered violations
+  ViolationOutputBuffer h_output;
   ViolationOutputBuffer *d_output;
   gpuErrchk(cudaMallocAsync(&d_output, sizeof(ViolationOutputBuffer), *stream));
-  gpuErrchk(cudaMemsetAsync(d_output, 0, sizeof(ViolationOutputBuffer), *stream));
+  gpuErrchk(cudaMemcpyAsync(d_output, &h_output, sizeof(ViolationOutputBuffer), cudaMemcpyHostToDevice, *stream));
+
+  // Create a counter for the total number of visited states
+  unsigned int h_total_counter = 0;
+  unsigned int *d_total_counter;
+  gpuErrchk(cudaMallocAsync(&d_total_counter, sizeof(d_total_counter), *stream));
+  gpuErrchk(cudaMemcpyAsync(d_total_counter, &h_total_counter, sizeof(d_total_counter), cudaMemcpyHostToDevice, *stream));
 
   // Run the kernel
-  Grapple<<<blocks_per_grid, threads_per_block, 0, *stream>>>(runIdx, d_queue, d_hash_primers, d_counter, d_output);
+  Grapple<<<blocks_per_grid, threads_per_block, 0, *stream>>>(runIdx, d_queue, d_hash_primers, d_counter, d_output, d_total_counter);
 
   // Copy HyperLogLog counter of visited states back to host
   gpuErrchk(cudaMemcpyAsync(&h_counter, d_counter, sizeof(StateCounter), cudaMemcpyDeviceToHost, *stream));
 
   // Copy discovered violations back to host
-  ViolationOutputBuffer h_output;
   gpuErrchk(cudaMemcpyAsync(&h_output, d_output, sizeof(ViolationOutputBuffer), cudaMemcpyDeviceToHost, *stream));
+
+  // Copy total number of visited states counter back to host
+  gpuErrchk(cudaMemcpyAsync(&h_total_counter, d_total_counter, sizeof(d_total_counter), cudaMemcpyDeviceToHost, *stream));
 
   // Free global memory allocated by `cudaMalloc`
   gpuErrchk(cudaFreeAsync(d_queue, *stream));
@@ -283,6 +301,7 @@ runGrapple(unsigned int runIdx, std::mt19937 *gen, cudaStream_t *stream)
   GrappleOutput out = {
       .violations = std::make_shared<ViolationOutputBuffer>(h_output),
       .visited = std::make_shared<StateCounter>(h_counter),
+      .totalVisited = h_total_counter,
   };
   return std::make_shared<GrappleOutput>(out);
 }
