@@ -301,7 +301,7 @@ In their implementation of Swarm Verification, each VT's state space exploration
 \subsection {Low-Connectivity Models}
 
 % What are Low-Connectivity models?
-A key observation of \cite{DeFrancisco2020.Grapple} is that their algorithms's state space coverage in relation to the number of executed VTs slows down on models with \emph{low connectivity}.
+A key observation of \cite{DeFrancisco2020.Grapple} is that their algorithm's state space coverage in relation to the number of executed VTs slows down on models with \emph{low connectivity}.
 A model has \emph{low connectivity} if at least one of the following properties is satisfied:
 
 \begin{itemize}
@@ -507,6 +507,7 @@ These diversification techniques exist:
 \end{enumerate}
 
 \subsection{State Pruning and Start Overs}
+\label{section:theory:state-pruning}
 
 % How are partitions made with State Pruning using Hash Collisions?
 
@@ -630,22 +631,27 @@ This proposes two challenges:
 2. We have to map multidimensional queues into a one-dimensional, linear memory allocation.
 
 % How are the fixed-capacity queues implemented?
+% TODO describe push and pop using pseudocode?
 Usually, fixed-capacity queues are implemented as ring buffer.
 However, due to the design of the two-phase parallel state space exploration, it is sufficient to implement the queue as a singly linked list.
 In addition to that, we have to keep a pointer to the \texttt{head} and \texttt{tail} of the linked list.
 Then, in the first phase, each queue is filled through the $\qPush$ operation by adding an element to its linked list and updating the \texttt{tail}, until the \texttt{tail} points to the last element in memory.
 In the second phase, each queue is completely emptied through the $\qPop$ operation by retrieving the \texttt{head}, then incrementing it until \texttt{head} equals \texttt{tail}.
-A queue is empty if both \texttt{head} and \texttt{tail} are a null pointer.
+A queue is empty if both \texttt{head} and \texttt{tail} are null pointers.
 
 % How are the multidimensional queues mapped into memory?
 The memory address of thread $i$'s input queue, which is an output queue of thread $j$, in algorithm phase $t$, of VT $v$, is calculated using the formula:
 \[v \cdot (2 \cdot N \cdot N) + t \cdot (N \cdot N) + j \cdot N + i\]
 
-\cref{fig:4d-mapped-memory} illustrates the mapping of a single VT with $N=4$.
-It aims to make it more clear why we have to multiply each variable with the \textit{width} of all children, doing the same on every level of the multidimensional array, then adding up all products.
+\cref{fig:4d-mapped-memory} illustrates the mapping of a single example VT with $K=1$ and $N=4$, meaning that we allocate memory for $1 \times 2 \times 4 \times 4 = 32$ queues.
+On the top row, each slot represents the memory allocation of a single queue.
+The remaining rows illustrate the constants enclosed in parentheses in our formula:
+Each set of output queues has a width of $N$, which we have to multiply with the index of the current thread to get at its first memory slot.
+Each phase has a width of $(N \cdot N)$, which we have to multiply with the index of the current phase.
+Each VT has a width of $(2 \cdot N \cdot N)$, which we again have to multiply with the index of the current VT to get to its first memory position.
+By adding up all products, and adding the index of the current input queue, we get the address of the exact slot.
 
-% TODO explain figure by highlighting a queue, then explain how we get there using our formula.
-
+% TODO better graphic using curly braces instead of boxes
 \begin{figure}[h]
     \includegraphics[width=\textwidth]{figures/4d-mapped-memory}
     \caption{A single VT of the 4D array, mapped to 1D memory}
@@ -721,23 +727,64 @@ We translate DVE models into CUDA compatible C++ with the template described in 
 \subsection{Hash tables}
 
 The hash tables provide a data structure in which states are marked as visited.
+They are only used on-device within the CUDA kernel and stored in shared memory, resulting in a highly constrained size.
+Each VT operates on a single hash table, meaning that all threads in a block share one hash table.
+For memory efficiency, we use bitstate hashing, as done in \cite{DeFrancisco2020.Grapple}.
+Our hash tables can store $2^{18}=262144$ states, taking up 32768 bytes of shared memory.
 
-% In which memory are hash tables stored?
-% How does bitstate hashing work?
 % How can we control collisions?
+The hash function's goal is to map random data with unknown distribution onto a nearly uniform distribution, so each bucket of the hash table is used equally likely.
+In our implementation, hashing is done using the Jenkins Hash function\footnote{\url{https://www.burtleburtle.net/bob/hash/doobs.html}}.
+The MurMurHash3\footnote{\url{https://github.com/aappleby/smhasher}}, which is used by our HyperLogLog, yields similar results.
 
-Hash table
-- The data structure in which states are marked as visited
-- Collisions are used for diversification
-- Stored in shared memory, thus highly constrained size
+Hash collisions resulting in false-positives are intended, as explained in \cref{section:theory:state-pruning}.
+To achieve that in every VT different states cause a collision, each is including a different seed into the hash.
+The rate of collisions can then be controlled by the hash table's size.
+
+% How does bitstate hashing work?
+In bitstate hashing, a single bit represents whether a state is visited.
+Per clock cycle, CUDA can transmit 32 bit of shared memory, which is stored in 32-bit words.
+Resulting from this, we use a bucket size of 32 bit.
+The bit representing whether a state is visited is then computed using \cref{alg:bitstate-hashing}.
+
+\begin{algorithm}
+    \caption{Bitstate hashing}
+    \label{alg:bitstate-hashing}
+    \begin{algorithmic}
+        \LComment{Initialize hash table buckets. Here, $N$ is the hash table size}
+        \State $table[(1 << N - 5)] \gets \{0, \dots, 0\}$
+
+        \State
+
+        \Function{$\markVisited$}{state}
+        \State $hash \gets \operatorname{make\_hash}(state, seed) \mathbin{\text{\&}} (1 << N) - 1$
+
+        \LComment{First 5 bits ($2^5=32$) are the index within the bucket}
+        \State $elem \gets hash >> N - 5$
+
+        \LComment{Last $N-5$ bits are the bucket index}
+        \State $bucket \gets hash \mathbin{\text{\&}} (1 << N - 5) - 1$
+
+        \LComment{Retrieve current state}
+        \State $isVisited \gets table[bucket] \mathbin{\text{\&}} (1 << elem_idx)) \neq 0$
+
+        \LComment{Update hash bucket}
+        \State $table[bucket] \mathbin{\text{|=}} (1 << elem)$
+
+        \State
+
+        \State \Return $isVisited$
+        \EndFunction
+    \end{algorithmic}
+\end{algorithm}
 
 \subsection{HyperLogLog++}
 
-HyperLogLog
-- The data structure that counts unique states visited across all VTs
-- Each VT has a shared HyperLogLog for all of its threads
-- Threads only call the `add` operation on their HLL
-- The host collects all HLLs, then merges them to calculate the total number of unique states visited
+The HyperLogLog (HLL) provides an algorithm for distributed counting of distinct elements, as described in \cref{section:theory:counting-unique-states-visited}.
+In our implementation, the grid of VTs of each run is operating on a single HLL that is stored in global memory.
+Visited states are added to the HLL only on-device.
+The host collects the HLLs after the kernels have finished, merge them into one big HLL and does the estimation of unique states visited.
+Merging and estimating the amount of unique states visited is done only on the host.
 
 \section{Usage}
 \label{section:implementation:usage}
@@ -755,7 +802,7 @@ To verify a model using our model checker, a user has to complete the following 
 
 \chapter{Experiments}
 
-\section{Reproducing the results from \cite{DeFrancisco2020.Grapple}}
+\section{Reproducing the results from the paper}
 
 \section{Low-Connectivity Models}
 

@@ -16,3 +16,5 @@ DeFrancisco
 HyperLogLog
 pseudorandom
 PRNG
+bitstate
+HLL
