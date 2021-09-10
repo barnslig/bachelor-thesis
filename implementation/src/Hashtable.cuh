@@ -25,6 +25,13 @@ class Hashtable
    *
    * We can divide by 32 as we do so as well on the hashes and each bucket gets
    * assigned 32 bit of different information.
+   *
+   * For N = 18, we thus have:
+   *  2^18 / 32
+   *  = (1 << 18) / 32
+   *  = (1 << 18 - 5)
+   *  = (1 << 13)
+   *  = 8192 buckets
    */
   static constexpr uint32_t kHashtableSize = hashsize(N) / 32;
 
@@ -50,20 +57,22 @@ class Hashtable
   {
     uint32_t elem_hash = jenkins_hash(elem, sizeof(T), a, b, c) & hashmask(N);
 
-    /* Each hash bucket can store 32 bits, each representing whether an
-     * element is already visited or not. Thus, we have to divide the
-     * hash by 32. This also saves us a lot of memory!
-     * The modulo operation from the paper is omitted here as we mask
-     * the hash so it does not exceed our hashtable.
+    /* Last N-5 bits: Bucket index
+     *
+     * In the paper, this calculation is done using: elem_hash / 32
      */
-    uint32_t hashed_value = elem_hash / 32;
+    uint32_t bucket_idx = elem_hash & (1 << N - 5) - 1;
 
-    /* Determine which bit within our hash bucket represents the current
-     * element by using modulo
+    /* First 5 bits: Index inside the bucket
+     *
+     * Each hash bucket can store 32 bits, each representing whether an
+     * element is already visited or not. This saves us a lot of memory!
+     *
+     * In the paper, this calculation is done using: elem_hash % 32
      */
-    uint32_t sel = elem_hash % 32;
+    uint32_t elem_idx = (elem_hash >> N - 5);
 
-    bool is_visited = (myAtomicOr(&elems[hashed_value], (1 << sel)) & (1 << sel)) != 0;
+    bool is_visited = (myAtomicOr(&elems[bucket_idx], (1 << elem_idx)) & (1 << elem_idx)) != 0;
 
     return is_visited;
   }
