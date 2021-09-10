@@ -4,7 +4,7 @@
 
 __host__ __device__ void WaypointsState::successor_generation(WaypointsState *successor, unsigned int process, unsigned int ndc)
 {
-  successor->state = state | 1 << ((4 * process) + ndc);
+  successor->state = state | 1 << ((kNondeterministicChoices * process) + ndc);
 }
 
 __host__ __device__ bool WaypointsState::violates()
