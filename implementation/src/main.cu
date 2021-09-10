@@ -10,7 +10,7 @@
 /**
  * Default number of Grapple runs
  */
-constexpr int kDefaultRuns = 50000;
+constexpr int kDefaultRuns = 50000 / 250;
 
 int main(int argc, char *const argv[])
 {
@@ -32,7 +32,7 @@ int main(int argc, char *const argv[])
        * run, we just divide by this.
        */
       // TODO does this make sense? We still find way less waypoints than expected
-      argRuns = std::strtol(optarg, nullptr, 10) / 250;
+      argRuns = std::strtol(optarg, nullptr, 10);
       break;
     case '?':
     case 'h':

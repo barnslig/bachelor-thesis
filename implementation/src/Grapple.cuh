@@ -8,7 +8,9 @@
 #include "HyperLogLog.cuh"
 #include "OutputBuffer.cuh"
 #include "Queue.cuh"
+#include "models/AndersonState.cuh"
 #include "models/PhilosophersState.cuh"
+#include "models/PhilosophersStateV2.cuh"
 #include "models/WaypointsState.cuh"
 
 // Amount of parallel verification tests. Each corresponds to a CUDA block
@@ -31,7 +33,7 @@ constexpr int kGrappleN = 32;
 constexpr unsigned int kStartOvers = 10;
 
 // Capacity of the violations output buffer, i.e. the maximum number of violations a single VT can report
-constexpr unsigned int kViolationsOutputBufferSize = 256;
+constexpr unsigned int kViolationsOutputBufferSize = 512;
 
 /**
  * The amount of states that can be marked in a hash table, as a power of two
