@@ -12,6 +12,7 @@ The following models are available:
 | [PhilosophersState.cuh](./PhilosophersState.cuh) | The Dining Philosophers Problem, implemented using `switch`-/`if`-conditions |
 | [PhilosophersStateV2.cuh](./PhilosophersStateV2.cuh) | The Dining Philosophers Problem, implemented using the SIMT-specific ternary operator |
 | [AndersonState.cuh](./AndersonState.cuh) | The Andersons queue lock mutual exclusion algorithm, implemented using the SIMT-specific ternary operator |
+| [PetersonState.cuh](./PetersonState.cuh) | The Peterson mutual exclusion protocol, implemented using the  SIMT-specific ternary operator |
 
 ## Switching Models
 

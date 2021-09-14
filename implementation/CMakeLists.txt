@@ -17,6 +17,7 @@ add_executable(grapple
   src/JenkinsHash.cu
   src/MurMurHash3.cu
   src/models/AndersonState.cu
+  src/models/PetersonState.cu
   src/models/PhilosophersState.cu
   src/models/PhilosophersStateV2.cu
   src/models/WaypointsState.cu

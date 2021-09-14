@@ -9,6 +9,7 @@
 #include "OutputBuffer.cuh"
 #include "Queue.cuh"
 #include "models/AndersonState.cuh"
+#include "models/PetersonState.cuh"
 #include "models/PhilosophersState.cuh"
 #include "models/PhilosophersStateV2.cuh"
 #include "models/WaypointsState.cuh"
