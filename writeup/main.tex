@@ -27,9 +27,11 @@ fancyheadings, % headings with seplines and logo
 \usepackage{algpseudocodex}
 \usepackage{amssymb}
 \usepackage{biblatex}
+\usepackage{booktabs}
 \usepackage{csquotes}
 \usepackage{mathtools}
 \usepackage{microtype}
+\usepackage{siunitx}
 \usepackage{subcaption}
 \usepackage{tikz}
 \usepackage{hyperref}
@@ -50,6 +52,10 @@ fancyheadings, % headings with seplines and logo
 
 % Inline citation, e.g. "Foobar" by J. Doe [27]
 \newcommand{\citeinline}[1]{\citetitle{#1} by \citeauthor*{#1} \cite{#1}}
+
+% Biwise operators
+\newcommand{\bitwiseAnd}{\mathbin{\text{\&}}}
+\newcommand{\bitwiseOr}{\mathbin{\text{|}}}
 
 % Information for the Titlepage
 \author{Leonard Techel}
@@ -86,6 +92,7 @@ fancyheadings, % headings with seplines and logo
 \end{quotation}
 
 \tableofcontents
+\listofalgorithms
 \listoffigures
 
 \mainmatter
@@ -187,6 +194,7 @@ Shared memory does not allow to easily split the work onto a cluster of heteroge
 \end{algorithm}
 
 \subsection{Swarm Verification}
+\label{section:background:swarm-verification}
 
 %% How does Swarm Verification work?
 %% How does Swarm Verification differ from other approaches?
@@ -379,30 +387,41 @@ This is a good fit with Swarm Verification, which turns the model checking probl
 % - Challenge: Where to parallelize?
 
 % TODO Graphic of the CUDA architecture
+% TODO Example CUDA kernel, as in the intermediate presentation
 
 \chapter{Theory}
 \label{chapter:theory}
 
-% TODO chapter introduction
-This chapter ...
+This chapter gives a detailed explanation of the algorithms used by our model checker.
+It starts with an in-depth description of the Grapple framework's state space exploration loop and its components in \cref{section:theory:grapple-model-checker}
+We then continue with a list of known State Space Diversification Techniques in \cref{section:theory:state-space-diversification}.
+The chapter finishes with a solution to the problem of counting the number of unique states visited in Swarm Verification in \cref{section:theory:counting-unique-states-visited}.
+
+% TODO what about the theory behind low-conn models ?
+
+\section{Model definition}
+\label{section:theory:model-definition}
+
+%% How are Models defined?
+The model is defined using a \emph{Kripke Structure} $M = \left(S; S_0; R; L \right)$ where $S$ is the finite set of states, $S_0 \in S$ is the finite set of initial states $S_0 \subseteq S$, $R \subseteq S \times S$ is the left-total transition relation and $L : S \mapsto 2^{AP}$ is the labelling function that assigns each state its atomic propositions.
+
+%% How are properties defined? (temporal logic)
 
 \section{Grapple model checker}
 \label{section:theory:grapple-model-checker}
 
 % How can the verification tests be run on GPUs using CUDA?
-The state space exploration of each VT is described by Algorithm 1 in \cite{DeFrancisco2020.Grapple}.
-It is based on the parallel BFS from \citeinline{Holzmann2012.Paralellizing-SPIN}.
-In summary, this parallel BFS algorithm works by allowing lock-free communication between threads using a shared, multidimensional queue array where, for each pair of threads, there is only one piece of memory to communicate over.
-Writing and reading to this piece of memory is coordinated by splitting the algorithm into two alternating phases.
+In Grapple, each VT executes an internally parallel state space exploration.
+We call it \emph{internally parallel} to differentiate between the parallelism \emph{within} a VT and the parallelism \emph{between} multiple VTs.
 
-Each thread in a VT executes \cref{alg:grapple-state-space-exploration}.
-$N$ is the amount of threads within a block, with $N = 32$ being the default.
-$I$ is the amount of queue slots, with $I = 4$ being the default. % TODO explain why we have these queues ???
+Each thread in a VT executes \cref{alg:grapple-state-space-exploration}, which is a more abstract version of Algorithm 1 from \citeinline{DeFrancisco2020.Grapple}.
+We are going to call this algorithm the \emph{Grapple algorithm}.
+The Grapple algorithm is based on the parallel BFS from \citeinline{Holzmann2012.Paralellizing-SPIN}.
 
 % TODO is this still true? i think no
 % We currently only support a single initial state.
 
-\section{Model Definition and State Generation}
+\subsection{Model Definition and State Generation}
 \label{section:theory:model-definition-state-generation}
 
 %% What is the difference between on-the-fly and a priori state generation?
@@ -410,30 +429,82 @@ State generation strategies of model checkers can be divided into \emph{a priori
 In a priori generation, the state space graph is completely known before running the verification algorithm, for example as an adjacency matrix.
 In on-the-fly generation, the successors of each state are created on the fly during verification.
 Grapple uses on-the-fly generation on the GPU.
-
-%% How are Models defined?
-The model is defined using a \emph{Kripke Structure} $M = \left(S; S_0; R; L \right)$ where $S$ is the finite set of states, $S_0 \in S$ is the finite set of initial states $S_0 \subseteq S$, $R \subseteq S \times S$ is the left-total transition relation and $L : S \mapsto 2^{AP}$ is the labelling function that assigns each state its atomic propositions.
+Furthermore, Grapple can only verify models with the same number of nondeterministic choices
 
 \[M = \left(\left(S; S_0; R; L\right); P; \mathit{NDC}\right)\]
 
 %% Which operations does the model have?
 The states of a model support two operations: $\sSuccessor(p, ndc, state)$ on-the-fly returns a successor to a state and $\sViolates(state)$ returns whether a state violates.
 
-\section{Queues}
+\begin{align*}
+    \sSuccessor
+    : S \times \mathit{NDC} \times \mathit{P}
+    \mapsto S
+\end{align*}
+
+\begin{align*}
+    \sViolates
+    : S
+    \mapsto \left\{0, 1\right\}
+\end{align*}
+
+\subsection{Queues}
 \label{section:theory:queues}
+
+%% What is the purpose of the queues?
+In summary, the parallel BFS is implemented using lock-free communication between threads via a shared, multidimensional queue array.
+Being lock-free removes the overhead of waiting for locks to be released and allows the algorithm to be split up onto many threads, limited only by the quadratic queue size.
+
+%% How do the queues work?
+For each pair of threads, there is only one piece of memory to communicate over.
+Writing and reading to this piece of memory is coordinated by splitting the algorithm into two alternating phases:
+
+In the first phase $t=0$, each thread $i$ processes all states from its input queues $Q\left[t\right]\left[ 0 \dots N \right]\left[i\right]$.
+Here, $N$ denotes the amount of threads executing a VT, with $N=32$ being the default.
+For each input state, successors are generated on-the-fly.
+For each successor, we check whether it is already visited in a hash table.
+If a successor is priorly unvisited, we check whether it violates.
+Violating successors are reported to the host using a buffer.
+Non-violating successors are written to a random worker $j$'s input queue $Q\left[1 - t\right]\left[i\right]\left[j\right]$.
+When all input states are processed and threads are synchronized, the phases get swapped, i.e. $t = 1 - t$.
+This process repeats until no more unvisited successors are discovered.
+
+% TODO explain why we have a multi-slot queue for each thread ???
 
 %% Which operations does the queues have?
 The queues support three operations: $\qPush(Q, state)$ adds a state to the back, $\qPop(Q)$ removes and returns the first state from the front and $\qEmpty(Q)$ tells whether a queue is empty.
 
-%% What is the purpose of the queues?
-
-\section{Hash table}
+\subsection{Hash table}
 \label{section:theory:hash-table}
 
 %% Which operations do the hash tables have?
 The hash tables support one operation: $\markVisited(V, state)$ marks a state as visited and returns whether it was already visited before.
 
 %% How do the bit state hash table work and how can we control the collisions?
+
+
+% TODO Validity: For which inputs does the algorithm work?
+% \paragraph{Validity}
+
+% TODO Correctness: Are all criteria fulfilled? Ex: Is every discovered violation actually a violation?
+% \paragraph{Correctness}
+
+% Completeness: Does the algorithm find all violations?
+\paragraph{Completeness} A big challenge in Swarm Verification is the question on how much of the state space is actually covered, i.e. whether all violations are found.
+Due to overlap in state space between VTs and the sheer amount of states being checked by each VT, computing the exact number of unique states visited and thus the exact state space coverage can hardly be done.
+Instead, we can estimate the state space coverage, as described in \cref{section:theory:counting-unique-states-visited}.
+
+% Termination: When/Does/Under which (input) conditions does the algorithm terminate?
+\paragraph{Termination}
+The algorithm terminates when there are no more unvisited state successors according to the hash table.
+In this case, all input queues of the next phase remain empty, i.e. $Q\left[1 - t\right]\left[0 \dots N\right]\left[0 \dots N\right] = \emptyset$.
+
+There are two reasons why at some point no more unvisited states get discovered:
+Either, we did an exhaustive verification of the model, meaning that all states actually got visited.
+Or, which happens most of the time in Grapple, the hash table is full, causing a collision of every new successor with an already visited state.
+Collisions are intended, as mentioned in \cref{section:background:swarm-verification}.
+
+Resulting from this, the algorithm at worst terminates after having visited the number of states being the minimum of queue size and state space size.
 
 \begin{algorithm}
     \caption{Grapple state space exploration loop of a single worker}
@@ -485,14 +556,8 @@ The hash tables support one operation: $\markVisited(V, state)$ marks a state as
     \end{algorithmic}
 \end{algorithm}
 
-\section{Validity, Correctness, Completeness, Termination}
-
-% Validity: For which inputs does the algorithm work?
-% Correctness: Are all criteria fulfilled? Ex: Is every discovered violation actually a violation?
-% Completeness: Does the algorithm find all violations?
-% Termination: When/Does/Under which (input) conditions does the algorithm terminate?
-
 \section{State Space Diversification}
+\label{section:theory:state-space-diversification}
 
 \subsection{Diversification Techniques}
 
@@ -515,6 +580,46 @@ These diversification techniques exist:
 % Why do we need to lower the hash table's size? What problem arises from this?
 % How does starting over solve the problem of a lowered hash table size?
 % How does starting over solve the problem of deep exploration?
+
+\section{Waypoints model}
+\label{section:theory:waypoints-model}
+
+% Where does the WP model come from? What is it good for? (benchmark)
+The Waypoints (WP) model is a benchmark for Swarm Verification model checkers.
+It is first introduced in \cite{Holzmann2011.Swarm-Verification-Techniques} and is used as primary benchmark in \cite{DeFrancisco2020.Grapple}.
+Our implementation is defined in \cref{alg:waypoints-model}.
+
+% How does the state machine of the WP model work?
+The model creates a state space of the size of all 32-bit integers, i.e. $2^{32}=\num{4294967296}$ states.
+To do so, it uses eight processes, each in control of four bits.
+At successor generation, each process will nondeterministically set one of its bits.
+
+% What properties are verified on the WP model?
+There is a single reachability property:
+We predefine a set of 100 uniform randomly chosen 32-bit integers, called \emph{waypoints}.
+A state violates if it is part of the set.
+As the waypoints are uniformly distributed, the number of unique discovered waypoints is equal to the percentage of state space coverage.
+For example, 24 discovered waypoints means that approximately $24\%$ of the state space is covered.
+
+\begin{algorithm}
+    \caption{Waypoints model}
+    \label{alg:waypoints-model}
+    \begin{algorithmic}
+        \State $violations \gets \left\{\text{100 random 32-bit integers}\right\}$
+
+        \Statex
+
+        \Function{$\sSuccessor$}{$p$, $ndc$, $state$}
+        \State \Return $state \bitwiseOr 1 << ((4 \cdot process) + ndc)$
+        \EndFunction
+
+        \Statex
+
+        \Function{$\sViolates$}{$state$}
+        \State \Return $state \in violations$
+        \EndFunction
+    \end{algorithmic}
+\end{algorithm}
 
 \section{Counting Unique States Visited}
 \label{section:theory:counting-unique-states-visited}
@@ -580,6 +685,7 @@ As build system, CMake 3.16 is used.
 Code is written using the Object-Oriented Programming paradigm.
 
 %% Of which components does the Grapple model checker consist?
+% TODO visualize the architecture
 Our implementation consists of six components:
 1. The main program, running the CUDA kernels and collecting their results.
 2. The CUDA kernel, implementing a parallel state space exploration loop.
@@ -606,16 +712,6 @@ After each run, the main program collects the discovered violations and number o
 
 % What does the Grapple CUDA kernel do?
 The CUDA kernel executes the state space exploration loop, as described in \cref{section:theory:grapple-model-checker}.
-
-% TODO move this paragraph into Theory
-In summary, it works as follows:
-First, it retrieves new input states from its queues.
-Then, for each input state, the successors are generated.
-For each successor, we check whether it is already visited in the hash table.
-If a successor is priorly unvisited, we check whether it violates.
-Violating successors are reported to the host using a buffer.
-Non-Violating successors are written to a random worker's output queue.
-This process repeats until no more unvisited successors are discovered.
 
 %% How can the variations (PDS, process-PDS, scatter-PDS, ...) be implemented?
 
@@ -682,13 +778,16 @@ To do so, it makes use of the custom ternary operator described in \cref{alg:bra
     \end{algorithmic}
 \end{algorithm}
 
-Using our custom ternary, we can re-use DVE models from the discontinued BEEM model database\footnote{\url{https://paradise.fi.muni.cz/beem/}}.
-DVE is a file format used by the DIVINE 3 model checker.
 Other than in \cite{Bartocci2014.GPGPU-Parallel-SPIN}, we do not fit a state's variables into a single integer using bit shifts.
 Instead, we use regular C++ class data members.
 The increased memory demand by regular data members can be neglected, as the queues in which we store state instances are in global memory which is usually gigabytes in size.
+Also, the same behavior as in the paper can be achieved using C++ bit field members.
 
+Using our custom ternary, we can re-use DVE models from the discontinued BEEM model database\footnote{\url{https://paradise.fi.muni.cz/beem/}}.
+DVE is a file format used by the DIVINE 3 model checker.
 We translate DVE models into CUDA compatible C++ with the template described in \cref{alg:on-the-fly-state-generation-on-the-gpu}.
+
+% TODO explain the on-the-fly GPU state generation algorithm
 
 \begin{algorithm}
     \caption{On-The-Fly State Generation on the GPU}
@@ -698,6 +797,8 @@ We translate DVE models into CUDA compatible C++ with the template described in 
         \State $glob \gets 0$
         \LComment{Process-Local variables use arrays. Here, N is the number of processes}
         \State $state[N] \gets \{0, \dots, 0\}$
+
+        \Statex
 
         \Function{$\sSuccessor$}{p, ndc, state}
         \LComment{Evaluate all guards before calculating transitions}
@@ -716,6 +817,8 @@ We translate DVE models into CUDA compatible C++ with the template described in 
         \State $next.glob \gets \operatorname{MyTernary}(guard_3, 0, next.glob)$
         \State $next.state \gets \operatorname{MyTernary}(guard_3, 0, next.state)$
 
+        \Statex
+
         \State \Return $next$
         \EndFunction
     \end{algorithmic}
@@ -730,7 +833,7 @@ The hash tables provide a data structure in which states are marked as visited.
 They are only used on-device within the CUDA kernel and stored in shared memory, resulting in a highly constrained size.
 Each VT operates on a single hash table, meaning that all threads in a block share one hash table.
 For memory efficiency, we use bitstate hashing, as done in \cite{DeFrancisco2020.Grapple}.
-Our hash tables can store $2^{18}=262144$ states, taking up 32768 bytes of shared memory.
+Our hash tables can store $2^{18}=\num{262144}$ states, taking up \num{32768} bytes of shared memory.
 
 % How can we control collisions?
 The hash function's goal is to map random data with unknown distribution onto a nearly uniform distribution, so each bucket of the hash table is used equally likely.
@@ -754,24 +857,24 @@ The bit representing whether a state is visited is then computed using \cref{alg
         \LComment{Initialize hash table buckets. Here, $N$ is the hash table size}
         \State $table[(1 << N - 5)] \gets \{0, \dots, 0\}$
 
-        \State
+        \Statex
 
         \Function{$\markVisited$}{state}
-        \State $hash \gets \operatorname{make\_hash}(state, seed) \mathbin{\text{\&}} (1 << N) - 1$
+        \State $hash \gets \operatorname{make\_hash}(state, seed) \bitwiseAnd (1 << N) - 1$
 
         \LComment{First 5 bits ($2^5=32$) are the index within the bucket}
-        \State $elem \gets hash >> N - 5$
+        \State $elem \gets hash >> (N - 5)$
 
         \LComment{Last $N-5$ bits are the bucket index}
-        \State $bucket \gets hash \mathbin{\text{\&}} (1 << N - 5) - 1$
+        \State $bucket \gets hash \bitwiseAnd (1 << N - 5) - 1$
 
         \LComment{Retrieve current state}
-        \State $isVisited \gets table[bucket] \mathbin{\text{\&}} (1 << elem_idx)) \neq 0$
+        \State $isVisited \gets table[bucket] \bitwiseAnd (1 << elem) \neq 0$
 
         \LComment{Update hash bucket}
         \State $table[bucket] \mathbin{\text{|=}} (1 << elem)$
 
-        \State
+        \Statex
 
         \State \Return $isVisited$
         \EndFunction
@@ -802,9 +905,100 @@ To verify a model using our model checker, a user has to complete the following 
 
 \chapter{Experiments}
 
-\section{Reproducing the results from the paper}
+This chapter shows experimental results of our implementation.
+All experiments are done on an NVIDIA GeForce RTX 2080 Ti GPU, using the randomly chosen hash seed 1736331306.
+
+The calculation of visited state space is done using a HLL with $2^{14}$ registers.
+This means that there may be a relative error of $\sigma=1.04 / \sqrt{2^{14}}=\num{0.008125}$.
+The 65\% error bound for each value $x$ is then $\left[x \cdot (1-\sigma), x \cdot (1+\sigma)\right]$.
+95\% and 99\% can be reached using $2\sigma$ and $3\sigma$.
+
+\section{Validating our implementation and reproducing results from the paper}
+
+We start the evaluation with executing the Waypoints model introduced in \cref{alg:waypoints-model}.
+Here, our model checker only implements a parallel BFS with state pruning using hash collisions.
+No other diversification techniques are applied.
+
+The results of this first experiment are visualized in \cref{fig:experiments:output1}.
+Both sides of the figure visualize the covered state space in relation to the executed VTs.
+On the left side, discovered waypoints are used as indicator.
+On the right side, the absolute count of the HLL divided by the total state space size is used.
+
+The first observation that can be drawn is, that both indicators are nearly identical.
+Having two indicators of state space coverage, we achieve high plausibility that both the waypoints as indicators of state space coverage and the HLL as actual counting of unique visited states operate as intended.
+
+Another observation is that even though \num{250000} VTs are executed, we only cover 35\% of the state space.
+This is far below the results from \cite{DeFrancisco2020.Grapple}, where all 100 waypoints are reached after about \num{100000} VTs.
+
+\begin{figure}[h]
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/experiments/output1-discovered-violations-abs-numbers.pdf}
+        \subcaption{Discovered violations, absolute numbers}
+    \end{subfigure}
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/experiments/output1-covered-state-space-in-percent.pdf}
+        \subcaption{Covered state space, in percent}
+    \end{subfigure}
+    \caption{Waypoints model, \num{1000} runs, $2^{18}$ hash table size, 0 start overs}
+    \label{fig:experiments:output1}
+\end{figure}
+
+There are two main implementation differences that we believe could lead to the results:
+
+In the paper, hash tables are used that can store nearly \num{400000} entries.
+Our hash table can only store \num{262144} entries.
+This means that approximately $\frac{1}{3}$ fewer states can be explored per VT, resulting in less depth.
+The size of our hash table cannot simply be increased, even though there is shared memory left, as our bit shift based hash bucket addressing only supports table sizes that are an exponent of two.
+
+Another reason may be that in the paper, the number of VTs per run/warp/\dots may be different:
+Initially, the paper states that they run \enquote{a single, internally parallel VT per warp}.
+Then, however, they state that each CUDA program \enquote{initializes a number of VTs, in this case 250}.
+When taking a look at the number of runs in relation to the number of discovered waypoints, results are similar to the paper again.
+
+% - Does it find all waypoints?
+% - Does the number of discovered waypoints represent the percentage of covered state space?
+% - Is the counted percentage of visited state space plausible?
+
+\section{Introducing Start Overs}
+
+Two key observations are that the state space exploration terminates when the hash table is full and that the rate of hash table collisions and, by that, the number of states that can be visited in a VT is mainly controlled by the hash table size.
+This lead to the idea of \emph{start overs}, which is based on the two-phase swarm of \cite{DeFrancisco2020.Grapple}.
+After a VT considers itself done,
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=.5\textwidth]{figures/experiments/output2-discovered-violations-abs-numbers.pdf}
+    \caption{Waypoints model, \num{1000} runs, $2^{14}$ hash table size, 15 start overs}
+    \label{fig:experiments:output2}
+\end{figure}
+
+% Philosophers ?? Anderson ??
 
 \section{Low-Connectivity Models}
+
+The Grapple paper suspects two models of being low-connectivity:
+Andersons queue lock mutual exclusion algorithm and the Dining Philosophers Problem.
+Both models are taken from the BEEM database. % TODO add citation to BEEM db
+
+The difference in model checking performance between the \emph{high-connectivity} Waypoints model and the \emph{low-connectivity} Anderson and Philosophers models can be observed by comparing the number of unique states visited of the models using the same model checker configuration.
+\cref{table:lc-comparison} contains results for the three models.
+
+\begin{table}[h]
+    \caption{Comparison of three models, executed with 250 VTs (one run), $2^{14}$ hash table size and 10 start overs}
+    \label{table:lc-comparison}
+    \centering
+    \begin{tabular}{l l l l}
+        \toprule
+        Model          & Unique States Visited & Total States Visited & Covered State Space \\
+        \midrule
+        Anderson 3     & \num{284941}          & \num{26688449}       & -                   \\
+        Philosopher 15 & \num{7.87901e+06}     & \num{44674703}       & ~55\%               \\
+        Waypoints      & \num{3.18306e+07}     & \num{45032805}       & ~0.74\%             \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
 \section{Optimizing Grapple on Low-Connectivity Models}
 
@@ -817,6 +1011,9 @@ To verify a model using our model checker, a user has to complete the following 
 \chapter{Conclusion}
 
 \section{Future work}
+
+- Estimate state space size for models of unknown size
+- Automatically determine the optimal number of start overs
 
 \section{Discussion}
 
