@@ -43,8 +43,8 @@ __host__ __device__ void AndersonState::successor_generation(AndersonState *succ
 __host__ __device__ bool AndersonState::violates()
 {
   /**
-     * The number of processes in state "CS"
-     */
+   * The number of processes in state "CS"
+   */
   unsigned int inCS = 0;
 
   for (unsigned int i = 0; i < kProcesses; i += 1)
