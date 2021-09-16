@@ -33,7 +33,7 @@ class Hashtable
    *  = (1 << 13)
    *  = 8192 buckets
    */
-  static constexpr uint32_t kHashtableSize = hashsize(N) / 32;
+  static constexpr uint32_t kHashtableSize = 12283;
 
   public:
   /**
@@ -55,22 +55,29 @@ class Hashtable
    */
   __host__ __device__ bool markVisited(T *elem, int a, int b, int c)
   {
-    uint32_t elem_hash = jenkins_hash(elem, sizeof(T), a, b, c) & hashmask(N);
+    uint32_t elem_hash = jenkins_hash(elem, sizeof(T), a, b, c);
 
-    /* Last N-5 bits: Bucket index
+    /**
+     * The hash bucket index
      *
-     * In the paper, this calculation is done using: elem_hash / 32
+     * Each hash bucket can store 32 bit, each representing whether an
+     * element is already visited or not. Thus, we have to divide the
+     * hash by 32 to get the bucket index.
+     *
+     * As in the paper, we use modulo to keep the bucket index within
+     * the bounds of our hash table. Using a bit shift is not possible
+     * as the maximum kHashtableSize (= maximum shared memory size)
+     * is not a power of two.
      */
-    uint32_t bucket_idx = elem_hash & (1 << N - 5) - 1;
+    uint32_t bucket_idx = (elem_hash / 32) % kHashtableSize;
 
-    /* First 5 bits: Index inside the bucket
+    /**
+     * The bit index within the hash bucket
      *
      * Each hash bucket can store 32 bits, each representing whether an
      * element is already visited or not. This saves us a lot of memory!
-     *
-     * In the paper, this calculation is done using: elem_hash % 32
      */
-    uint32_t elem_idx = (elem_hash >> N - 5);
+    uint32_t elem_idx = elem_hash % 32;
 
     bool is_visited = (myAtomicOr(&elems[bucket_idx], (1 << elem_idx)) & (1 << elem_idx)) != 0;
 
