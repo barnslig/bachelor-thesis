@@ -60,7 +60,7 @@ class OutputBuffer
   {
     if (tail == N)
     {
-      printf("Buffer full\n");
+      // printf("Buffer full\n");
       return;
     }
 
