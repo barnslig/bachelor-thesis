@@ -9,10 +9,11 @@
 
 ## Low-Connectivity model evaluation
 
-### TODO
-
 - EXP-10 Comparison of Exploration of the Dining Philosophers Problem with Different Number of Processes
 - EXP-11 Comparing Models by their BFS Frontiers: Relative and Absolute
 - EXP-12 Comparing Models by Percentage of VTs Finding a Violation, Unique States Visited, Total States Visited, and State Space Coverage
-- EXP-13 Observing the State Space Coverage Growth over Multiple VTs
+- EXP-13 Comparing the Start Over Strategy on Low-Connectivity Models
+
+### TODO
+
 - EXP-14 Exploring DP/Anderson/Peterson using Depth-limited process-PDS

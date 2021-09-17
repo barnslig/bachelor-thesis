@@ -1,0 +1,5 @@
+dependencies:
+  - ipykernel
+  - jupyter
+  - matplotlib
+  - pandas
