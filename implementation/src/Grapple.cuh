@@ -14,11 +14,57 @@
 #include "models/PhilosophersStateV2.cuh"
 #include "models/WaypointsState.cuh"
 
+#ifndef GRAPPLE_VTS
+/**
+ * Number of VTs in a grid
+ */
+#define GRAPPLE_VTS 250
+#endif // GRAPPLE_VTS
+
+#ifndef GRAPPLE_N
+/**
+ * Number of threads in a VT
+ */
+#define GRAPPLE_N 32
+#endif // GRAPPLE_N
+
+#ifndef GRAPPLE_I
+/**
+ * Number of queue slots
+ */
+#define GRAPPLE_I 4
+#endif // GRAPPLE_I
+
+#ifndef GRAPPLE_SO
+/**
+ * Number of start overs
+ */
+#define GRAPPLE_SO 0
+#endif // GRAPPLE_SO
+
+#ifndef GRAPPLE_HT
+/**
+ * Hash table capacity, as power of two
+ */
+#define GRAPPLE_HT 18
+#endif // GRAPPLE_HT
+
+#ifndef GRAPPLE_HLL
+/**
+ * Size of the HyperLogLog++ registers, as power of two
+ */
+#define GRAPPLE_HLL 14
+#endif // GRAPPLE_HLL
+
+#ifndef GRAPPLE_MODEL
+#define GRAPPLE_MODEL WaypointsState
+#endif // GRAPPLE_MODEL
+
 // Amount of parallel verification tests. Each corresponds to a CUDA block
-constexpr int kGrappleVTs = 250;
+constexpr int kGrappleVTs = GRAPPLE_VTS;
 
 // Amount of threads in a verification test. Each corresponds to a CUDA thread in a CUDA block
-constexpr int kGrappleN = 32;
+constexpr int kGrappleN = GRAPPLE_N;
 
 /**
  * Times a VT may start over the search
@@ -31,8 +77,7 @@ constexpr int kGrappleN = 32;
  * To keep the algorithm terminating, this constant defines how often
  * it may start over.
  */
-constexpr unsigned int kStartOvers = 10;
-
+constexpr unsigned int kStartOvers = GRAPPLE_SO;
 // Capacity of the violations output buffer, i.e. the maximum number of violations a single VT can report
 constexpr unsigned int kViolationsOutputBufferSize = 512;
 
@@ -42,7 +87,7 @@ constexpr unsigned int kViolationsOutputBufferSize = 512;
  *
  * 18 is the maximum that fits into memory
  */
-constexpr unsigned int kHashtableCapacity = 14;
+constexpr unsigned int kHashtableCapacity = GRAPPLE_HT;
 
 /**
  * A single queue's capacity
@@ -51,14 +96,14 @@ constexpr unsigned int kHashtableCapacity = 14;
  * not have to deal with non-specialized template compilation problems.
  * See https://stackoverflow.com/a/10632266
  */
-constexpr unsigned int kQueueCapacity = 4;
+constexpr unsigned int kQueueCapacity = GRAPPLE_I;
 
 /**
  * The size of the HyperLogLog register, as the power of two, i.e. 2^10
  */
-constexpr unsigned int kHyperLogLogRegisters = 14;
+constexpr unsigned int kHyperLogLogRegisters = GRAPPLE_HLL;
 
-using State = WaypointsState; // PhilosophersState;
+using State = GRAPPLE_MODEL;
 using StateHashtable = Hashtable<State, kHashtableCapacity>;
 using StateQueue = Queue<State, kQueueCapacity>;
 using StateCounter = HyperLogLog<State, sizeof(State), kHyperLogLogRegisters>;
