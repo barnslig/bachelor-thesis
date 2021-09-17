@@ -18,9 +18,10 @@ int main(int argc, char *const argv[])
 
   int argRuns = kDefaultRuns;
   int argSeed = rd(); // 1736331306
+  bool argSuppressViolation = false;
 
   int c;
-  while ((c = getopt(argc, argv, "s:n:h")) != -1)
+  while ((c = getopt(argc, argv, "s:n:qh")) != -1)
   {
     switch (c)
     {
@@ -34,12 +35,16 @@ int main(int argc, char *const argv[])
       // TODO does this make sense? We still find way less waypoints than expected
       argRuns = std::strtol(optarg, nullptr, 10);
       break;
+    case 'q':
+      argSuppressViolation = true;
+      break;
     case '?':
     case 'h':
       std::cerr << "Usage: " << argv[0] << " [options]\n\n";
       std::cerr << "Option        Description\n";
       std::cerr << " -s <seed>    Seed used for hash function diversification. Default: Random number\n";
       std::cerr << " -n <runs>    Number of Grapple runs. Default: " << kDefaultRuns << "\n";
+      std::cerr << " -q           Suppress violations from output\n";
       std::cerr << " -h           Show this message\n";
       exit(EXIT_FAILURE);
     }
@@ -83,7 +88,7 @@ int main(int argc, char *const argv[])
         << out->totalVisited
         << "\n";
 
-    while (!out->violations->empty())
+    while (!argSuppressViolation && !out->violations->empty())
     {
       Violation *v = out->violations->pop();
       unique_violations.insert(v->state.str());
