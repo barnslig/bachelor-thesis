@@ -50,7 +50,7 @@ int main(int argc, char *const argv[])
     }
   }
 
-#ifdef GRAPPLE_INSPECT_HT
+#ifdef GRAPPLE_INSPECT_BFS
   std::cout << "round,visited,failed\n";
 #else
   std::cout << "run,block,thread,state,uniques,visited,visited_percent,vts,total_visited\n";
@@ -78,7 +78,7 @@ int main(int argc, char *const argv[])
 
     out = runGrapple(i, &gen, &stream[i]);
 
-#ifndef GRAPPLE_INSPECT_HT
+#ifndef GRAPPLE_INSPECT_BFS
     global_visited.merge(*out->visited.get());
     double estimate = global_visited.estimate();
     double visitedPercent = estimate / State::kStateSpaceSize * 100;

@@ -14,9 +14,9 @@
 #include "models/PhilosophersStateV2.cuh"
 #include "models/WaypointsState.cuh"
 
-#ifdef GRAPPLE_INSPECT_HT
+#ifdef GRAPPLE_INSPECT_BFS
 #define GRAPPLE_VTS 1
-#endif // GRAPPLE_INSPECT_HT
+#endif // GRAPPLE_INSPECT_BFS
 
 #ifndef GRAPPLE_VTS
 /**

@@ -205,7 +205,7 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, StateCounter *
       // Swap queues
       if (threadIdx.x == 0)
       {
-#ifdef GRAPPLE_INSPECT_HT
+#ifdef GRAPPLE_INSPECT_BFS
         // printf("%u, %u, %u\n", rounds, visitedStatesRound, failedStatesRound);
 #endif
         visitedStatesRound = 0;
