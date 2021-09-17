@@ -50,7 +50,11 @@ int main(int argc, char *const argv[])
     }
   }
 
+#ifdef GRAPPLE_INSPECT_HT
+  std::cout << "round,visited,failed\n";
+#else
   std::cout << "run,block,thread,state,uniques,visited,visited_percent,vts,total_visited\n";
+#endif
 
   std::mt19937 gen(argSeed);
 
@@ -74,10 +78,12 @@ int main(int argc, char *const argv[])
 
     out = runGrapple(i, &gen, &stream[i]);
 
+#ifndef GRAPPLE_INSPECT_HT
     global_visited.merge(*out->visited.get());
     double estimate = global_visited.estimate();
     double visitedPercent = estimate / State::kStateSpaceSize * 100;
     std::cout
+        << i
         << ",,,,,"
         << estimate
         << ","
@@ -112,6 +118,7 @@ int main(int argc, char *const argv[])
           << out->totalVisited
           << "\n";
     }
+#endif
   }
 
   // Wait for all CUDA streams to terminate

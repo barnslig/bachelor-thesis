@@ -80,6 +80,12 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, StateCounter *
   // The "rounds", i.e. toggles of t, that this block has done during execution
   __shared__ int rounds;
 
+  // The number of visited states within the current round
+  __shared__ unsigned int visitedStatesRound;
+
+  // The number of failed (= already visited) states within the current round
+  __shared__ unsigned int failedStatesRound;
+
   // The number of visited states within this VT
   __shared__ unsigned int visitedStates;
 
@@ -90,6 +96,8 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, StateCounter *
     t = 0;
     rounds = 0;
     visitedStates = 1; // Include the initial state
+    visitedStatesRound = 1;
+    failedStatesRound = 0;
     queue[qAddr(blockIdx.x, t, threadIdx.x, 0)].push(State{});
   }
 
@@ -148,6 +156,7 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, StateCounter *
               {
                 counter->add(&successor);
 
+                atomicInc(&visitedStatesRound, UINT_MAX);
                 atomicInc(&visitedStates, UINT_MAX);
                 atomicInc(totalCounter, UINT_MAX);
 
@@ -179,6 +188,10 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, StateCounter *
                   }
                 }
               }
+              else
+              {
+                atomicInc(&failedStatesRound, UINT_MAX);
+              }
             }
           }
         }
@@ -192,6 +205,11 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, StateCounter *
       // Swap queues
       if (threadIdx.x == 0)
       {
+#ifdef GRAPPLE_INSPECT_HT
+        // printf("%u, %u, %u\n", rounds, visitedStatesRound, failedStatesRound);
+#endif
+        visitedStatesRound = 0;
+        failedStatesRound = 0;
         rounds += 1;
         t = 1 - t;
       }

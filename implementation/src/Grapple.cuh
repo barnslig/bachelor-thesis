@@ -14,6 +14,10 @@
 #include "models/PhilosophersStateV2.cuh"
 #include "models/WaypointsState.cuh"
 
+#ifdef GRAPPLE_INSPECT_HT
+#define GRAPPLE_VTS 1
+#endif // GRAPPLE_INSPECT_HT
+
 #ifndef GRAPPLE_VTS
 /**
  * Number of VTs in a grid
