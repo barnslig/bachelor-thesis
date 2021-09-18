@@ -1,9 +1,14 @@
 # Evaluation
 
-This folder contains protocols and raw data of our series of experiments. Our experiments serve two goals: First, we empirically evaluate our implementation and compare it to the paper. Then, to empirically observe key difference of low-connectivity state space exploration.
+This folder contains protocols and raw data of our series of experiments.
+
+Our experiments serve two goals:
+First, to empirically evaluate our implementation and compare it to the paper.
+Then, to empirically observe key difference of low-connectivity state space exploration.
 
 ## General evaluation of the implementation and comparison with the paper
 
+- [EXP-00 Comparison with the Grapple Paper using the Waypoints Model](EXP-00-comparison-with-paper.ipynb)
 - [EXP-01 Comparison of Waypoints and HLL as Indicators of State Space Coverage](EXP-01-comparison-waypoints-hll.ipynb)
 - [EXP-02 Maximum Size Hash Table](EXP-02-large-hash-table.ipynb)
 - [EXP-03 Multiple VTs Sharing a Kernel](EXP-03-shared-kernel.ipynb)
@@ -18,4 +23,4 @@ This folder contains protocols and raw data of our series of experiments. Our ex
 
 ### TODO
 
-- EXP-14 Exploring DP/Anderson/Peterson using Depth-limited process-PDS
+- EXP-14 Exploring DP/Anderson/Peterson using Depth-Limited process-PDS
