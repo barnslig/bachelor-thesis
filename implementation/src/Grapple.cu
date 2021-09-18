@@ -89,6 +89,8 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, StateCounter *
   // The number of visited states within this VT
   __shared__ unsigned int visitedStates;
 
+  __shared__ unsigned int stateCount[5];
+
   // Initialize shared variables and initial state within the first thread
   if (threadIdx.x == 0)
   {
@@ -99,6 +101,7 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, StateCounter *
     visitedStatesRound = 1;
     failedStatesRound = 0;
     queue[qAddr(blockIdx.x, t, threadIdx.x, 0)].push(State{});
+    memset(&stateCount, 0, sizeof(stateCount));
   }
 
   // Sync all threads after initial variable setup
@@ -160,6 +163,8 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, StateCounter *
                 atomicInc(&visitedStates, UINT_MAX);
                 atomicInc(totalCounter, UINT_MAX);
 
+                atomicInc(&stateCount[successor.state[p]], UINT_MAX);
+
                 if (successor.violates())
                 {
                   // When finding a violation (= a waypoint), report it
@@ -205,6 +210,18 @@ Grapple(unsigned int runIdx, StateQueue *queue, int *hashPrimers, StateCounter *
       // Swap queues
       if (threadIdx.x == 0)
       {
+        printf("%u,", rounds);
+        for (unsigned int i = 0; i < 5; i += 1)
+        {
+          printf("%u", stateCount[i]);
+          if (i != 4)
+          {
+            printf(",");
+          }
+        }
+        printf("\n");
+        memset(&stateCount, 0, sizeof(stateCount));
+
 #ifdef GRAPPLE_INSPECT_BFS
         // printf("%u, %u, %u\n", rounds, visitedStatesRound, failedStatesRound);
 #endif

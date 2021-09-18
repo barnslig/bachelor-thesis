@@ -51,7 +51,7 @@ int main(int argc, char *const argv[])
   }
 
 #ifdef GRAPPLE_INSPECT_BFS
-  std::cout << "round,visited,failed\n";
+  std::cout << "round,ncs,p1,p2,p3,cs\n";
 #else
   std::cout << "run,block,thread,state,uniques,visited,visited_percent,vts,total_visited\n";
 #endif
