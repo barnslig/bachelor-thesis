@@ -31,7 +31,8 @@ fancyheadings, % headings with seplines and logo
 \usepackage{csquotes}
 \usepackage{mathtools}
 \usepackage{microtype}
-\usepackage{siunitx}
+\usepackage[binary-units]{siunitx}
+\usepackage[section]{placeins}
 \usepackage{subcaption}
 \usepackage{tikz}
 \usepackage{hyperref}
@@ -100,6 +101,7 @@ fancyheadings, % headings with seplines and logo
 \tableofcontents
 \listofalgorithms
 \listoffigures
+\listoftables
 
 \mainmatter
 
@@ -121,6 +123,16 @@ Each verification test only covers a subset of the state space.
 Together, the verification tests nearly achieve full state space coverage.
 This approach works great on models with high connectivity.
 However, it fails when a model has only few edges between states or large portions of the state space are hidden behind bottleneck structures.
+
+Contributions:
+
+\begin{itemize}
+    \item Breakdown of the state space exploration loop using subroutines
+    \item Implementation of a Grapple model checker
+    \item A method of estimating unique states visited with a fixed error
+    \item The \emph{start over} search strategy that can reach deeper states
+    \item A visualization of Grapple BFS frontiers
+\end{itemize}
 
 \chapter{Related Work}
 
@@ -612,11 +624,16 @@ The following diversification techniques are known: \cite{Holzmann2011.Swarm-Ver
 \label{section:theory:state-pruning}
 
 % How are partitions made with State Pruning using Hash Collisions?
-
-
 % Why do we need to lower the hash table's size? What problem arises from this?
 % How does starting over solve the problem of a lowered hash table size?
 % How does starting over solve the problem of deep exploration?
+
+The basic BFS search terminates as soon as all successors are already visited according to the hash table.
+Thus, the maximum BFS depth is determined by the hash table's capacity.
+Also, each VT again starts at the initial state, resulting in all VTs potentially only exploring the tip of a model.
+
+By continuing the BFS within a VT using the set of last unvisited successors, we can reach deeper states of the model.
+By exploring deeper states, we expect to discover more violations and thus a faster growing state space coverage.
 
 \section{Waypoints Model}
 \label{section:theory:waypoints-model}
@@ -636,7 +653,7 @@ There is a single reachability property:
 We predefine a set of 100 uniform randomly chosen 32-bit integers, called \emph{waypoints}.
 A state violates if it is part of the set.
 As the waypoints are uniformly distributed, the number of unique discovered waypoints is equal to the percentage of state space coverage.
-For example, 24 discovered waypoints means that approximately $24\%$ of the state space is covered.
+For example, 24 discovered waypoints means that approximately \SI{24}{\percent} of the state space is covered.
 
 \begin{algorithm}
     \caption{Waypoints model}
@@ -667,7 +684,7 @@ For example, 24 discovered waypoints means that approximately $24\%$ of the stat
 \label{section:theory:counting-unique-states-visited}
 
 % Why do we need to count unique states visited?
-In Swarm Verification, we achieve a much faster verification by only covering \emph{nearly} 100\% of the state space.
+In Swarm Verification, we achieve a much faster verification by only covering \emph{nearly} \SI{100}{\percent} of the state space.
 Resulting from this, it is important to know how much of the state space is actually covered.
 To find this out, we need to count unique states visited.
 
@@ -696,7 +713,7 @@ We then can execute the \texttt{estimate} operation on the global HyperLogLog to
 % Where does HyperLogLog fail? What can we do about it?
 % TODO Move this section to implementation / evaluation ?
 Cardinality estimation with HyperLogLog yields good results on the Dining Philosophers problem with 15 processes and $3^{15}-1$ states.
-As expected, the number of unique states visited grows logarithmic until reaching around 100\%.
+As expected, the number of unique states visited grows logarithmic until reaching around \SI{100}{\percent}.
 However, on the Waypoints model with $2^{32}$ states, the estimation fails.
 
 The paper \citeinline{Heule2013.HyperLogLog++} finds out that the estimation of cardinalities beyond one billion fails on the original HyperLogLog algorithm.
@@ -704,6 +721,12 @@ They solve this problem by using a 64-bit hash instead, calling their improved a
 
 % TODO Can we fix our problem by using HLL++? - YES
 Using HLL++, we can count unique states visited.
+
+% How is the constant error calculated and used?
+In our implementation, we are using a HLL with $2^{14}$ registers.
+This means that there may be a relative error of $\sigma=1.04 / \sqrt{2^{14}}=\num{0.008125}$.
+The \SI{65}{\percent} error bound for each value $x$ is then $\left[x \cdot (1-\sigma), x \cdot (1+\sigma)\right]$.
+\SI{95}{\percent} and \SI{99}{\percent} can be reached using $2\sigma$ and $3\sigma$.
 
 \chapter{Implementation}
 
@@ -728,14 +751,14 @@ Code is written using the Object-Oriented Programming paradigm.
 %% Of which components does the Grapple model checker consist?
 Our implementation consists of six components:
 
-\begin{enumerate}
+\begin{itemize}
     \item The main program, running the CUDA kernels and collecting their results.
     \item The CUDA kernel, implementing a parallel state space exploration loop.
     \item The queues, providing lock-free communication between threads in a VT.
     \item The hash tables in which states are marked as visited.
     \item The model, providing successor generation and violation checking.
     \item The HyperLogLog, counting unique states visited across all VTs.
-\end{enumerate}
+\end{itemize}
 
 % TODO visualize the architecture
 
@@ -956,13 +979,8 @@ This chapter presents our series of empirical experiments conducted on our imple
 It starts with experiments on the correctness of our implementation and a comparison with the Grapple paper's results in \cref{section:evaluation:correctness-comparison-with-paper}.
 We then continue with a series of experiments that compare the Waypoints model, which is known to be high-connectivity, with three low-connectivity models in \cref{section:evaluation:low-connectivity-model-evaluation}.
 
-All experiments are performed on an NVIDIA GeForce RTX 2080 Ti GPU, using the randomly chosen hash seed 1736331306.
-
+All experiments are performed on an NVIDIA GeForce RTX 2080 Ti GPU.
 The calculation of visited state space is done using a HLL with $2^{14}$ registers.
-% TODO move the following sentences into the HyperLogLog's theory section
-This means that there may be a relative error of $\sigma=1.04 / \sqrt{2^{14}}=\num{0.008125}$.
-The 65\% error bound for each value $x$ is then $\left[x \cdot (1-\sigma), x \cdot (1+\sigma)\right]$.
-95\% and 99\% can be reached using $2\sigma$ and $3\sigma$.
 
 \section{Correctness and Comparison with the Paper}
 \label{section:evaluation:correctness-comparison-with-paper}
@@ -970,9 +988,9 @@ The 65\% error bound for each value $x$ is then $\left[x \cdot (1-\sigma), x \cd
 We start the evaluation with whether our implementation reaches the same number of discovered waypoints in relation to the amount of executed VTs as presented in the Grapple paper.
 We would expect both implementation to behave similarly, discovering at least 80 waypoints in \num{20000} VTs and all 100 waypoints in about \num{100000} VTs, as shown in \cref{fig:evaluation:EXP-00:1}.
 However, that is clearly not the case, as presented in \cref{fig:evaluation:EXP-00:2}.
-Our implementation finds significantly fewer waypoints, even though the amount of VTs is 2.5x larger.
+Our implementation found significantly fewer waypoints, even though the amount of VTs was 2.5x larger.
 
-To further investigate differences between the implementations, we conduct additional experiments.
+To further investigate differences between the implementations, we conducted additional experiments.
 
 \begin{figure}[h]
     \begin{subfigure}[b]{.5\textwidth}
@@ -994,14 +1012,14 @@ To further investigate differences between the implementations, we conduct addit
 \subsection{Comparison of Waypoints and HLL as Estimators of State Space Coverage}
 
 As explained in \cref{section:theory:waypoints-model}, counting waypoints is a method for estimating the achieved state space coverage.
-To make sure that the discovered waypoints of our implementation correctly indicate the state space coverage, we compare them to the state space coverage estimation of the HyperLogLog introduced in \cref{section:theory:counting-unique-states-visited}.
+To make sure that the discovered waypoints of our implementation correctly indicate the state space coverage, we compared them to the state space coverage estimation of the HyperLogLog introduced in \cref{section:theory:counting-unique-states-visited}.
 We would expect both estimators to show similar results.
-For example, when 20 waypoints are discovered, the HyperLogLog estimation should show about 20\% state space coverage.
+For example, when 20 waypoints are discovered, the HyperLogLog estimation should show about \SI{20}{\percent} state space coverage.
 
-In \cref{fig:evaluation:EXP-01}, results for both estimators are presented.
+\cref{fig:evaluation:EXP-01} presents results for both estimators.
 Clearly, both resemble each other closely.
 Thus, we assume them to work correct.
-This also confirms the results from our first experiment, underlining our implementation's deficient state space exploration.
+This also confirmed the results from our first experiment, underlining our implementation's deficient state space exploration.
 
 \begin{figure}[h]
     \begin{subfigure}[b]{.5\textwidth}
@@ -1022,149 +1040,299 @@ This also confirms the results from our first experiment, underlining our implem
 
 \subsection{Impact of Hash Table Size and Sequential VT Execution}
 
-We've identified two key differences of our implementation:
-\begin{enumerate}
-    \item Our hash tables are 33\% smaller than in the paper.
-          This is due to our bit shift implementation presented in \cref{section:implementation:hash-tables} which cannot address the full 48 KB of shared memory.
+Both implementations share a queue size of $32 \times 32 \times 4$.
+Beside of that, we identified two key differences of our implementation:
+
+\begin{itemize}
+    \item Our hash tables are \SI{33}{\percent} smaller than in the paper.
+          This is due to our bit shift implementation presented in \cref{section:implementation:hash-tables} which cannot address the full \SI{48}{\kibi\byte} of shared memory.
     \item We batch VTs in a CUDA kernel, each executing 250 at once.
           In the paper, there seems to be only a single VT per CUDA kernel.
-\end{enumerate}
+\end{itemize}
 
-To find out whether increasing the hash table size to full 48 KB increases waypoint discovery such that it is similar to the results from the Grapple paper, we've experimentally changed our implementation's addressing.
-As the hash table capacity should significantly affect the state space coverage of each VT, we would assume results close to those from the paper.
-For each experiment, we've executed 80 runs à 250 VTs (= \num{20000} VTs in total).
+To find out whether increasing the hash table size to full \SI{48}{\kibi\byte} increases waypoint discovery such that it is similar to the results from the Grapple paper, we experimentally changed our implementation's addressing.
+As the hash table capacity should significantly affect the state space coverage of each VT, we would expect results close to those from the paper.
+For each experiment, we executed 80 runs à 250 VTs (= \num{20000} VTs in total).
 Results are shown in \cref{table:EXP-02}.
 
-The larger hash table yields 2.1x as much state space coverage at only 1.45x as many total states visited.
+The larger hash table yielded 2.1x as much state space coverage at only 1.45x as many total states visited.
 Thus, a larger hash table seems beneficial on this particular model.
 
-However, in the paper, a Grapple swarm verification with \num{392800} hash table slots per VT after \num{20000} VTs discovered 85 waypoints, equalling 85\% state space coverage, which is about 3.7x as much as our large-size hash table implementation.
+However, in the paper, a Grapple swarm verification with \num{392800} hash table slots per VT discovered 85 waypoints in \num{20000} VTs, equalling \SI{85}{\percent} state space coverage, which is about 3.7x as much as our large-size hash table implementation.
 Resulting from this, the large-size hash table is still far from reproducing the paper's results.
 
 \begin{table}[h]
-    \caption{Comparison of different hash table capacities after 80 runs à 250 VTs on the waypoints model}
+    \caption{Exploration of the waypoints model using different hash table capacities in 80 runs à 250 VTs}
     \label{table:EXP-02}
     \centering
     \begin{tabular}{l l l l}
         \toprule
         HT Capacity  & State Space Coverage & Total States Visited \\
         \midrule
-        \num{262144} & 11.04\%              & \num{63568607}       \\
-        \num{393056} & 23.14\%              & \num{91937680}       \\
+        \num{262144} & \SI{11.04}{\percent} & \num{63568607}       \\
+        \num{393056} & \SI{23.14}{\percent} & \num{91937680}       \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-% TODO EXP-03
+In the paper, supposedly one VT is executed per \emph{grid}, resulting in one CUDA kernel per VT.
+To compare our parallelization of VTs in a single CUDA kernel with the sequential execution of multiple kernels, we switched the compiled number of VTs and the executed runs.
+We would expect both variants to create similar results.
+As the parallel execution only needs a single kernel setup, we also expect a shorter execution time.
+Results for both variants are shown in \cref{table:EXP-03}.
+The state space coverage and total visited states of both experiments are highly similar.
+The execution time of parallel execution was more than 35x faster.
+Concluding this, the experiment showed that batch execution of VTs highly speeds up execution time at equal results.
+
+\begin{table}[h]
+    \caption{Parallel and sequential exploration of the waypoints model}
+    \label{table:EXP-03}
+    \centering
+    \begin{tabular}{l l l l S}
+        \toprule
+        {VTs per Kernel} & {Runs} & {State Space Coverage} & {Total States Visited} & {Execution Time}     \\
+        \midrule
+        1                & 250    & \SI{0.456}{\percent}   & \num{63568343}         & \SI{26.691}{\second} \\
+        250              & 1      & \SI{0.450}{\percent}   & \num{63568498}         & \SI{0.754}{\second}  \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The last two experiments showed that there seems to be a lack in our implementation beside the hash table capacity, queue size and execution order.
+
+\subsection{Increasing State Space Coverage using Start Overs}
+\label{section:evaluation:start-overs}
+
+We suspect that part of the bad exploration performance is that each VT can only reach as deep into the state space as its hash table can find unvisited states.
+As a countermeasure, we introduced the start over strategy in \cref{section:theory:state-pruning}.
+
+The next experiment evaluates whether start overs actually increase the growth of state space coverage and thus the model checking performance.
+By reaching deeper states, we expect to discover more violations and thus a faster growing state space coverage.
+To do so, we compared \num{1000} exploration runs of the waypoints model with an arbitrary, much lower hash table capacity of $2^{14}=\num{16384}$ slots and 15 start overs with the default configuration of $2^{18}=\num{262144}$ hash table slots and 0 start overs.
+We chose 15 start overs to mitigate the smaller hash table, which is $\frac{1}{16}$ the size, resulting in 16 total searches in the first exploration, including the initial search.
+Results for both explorations are presented in \cref{fig:evaluation:EXP-04:1}.
+With start overs, the exploration took \SI{243}{\second}.
+Without, it took \SI{442}{\second}.
+
+As the number of total visited states by a VT varies between the two explorations due to for example different hash collisions, we also compared the cumulated number of total visited states of both explorations in \cref{fig:evaluation:EXP-04:2}.
+
+Clearly, the start over strategy resulted in a significant increase of discovered violations on a similar number of visited states and VTs.
+Also, the execution time of the start over strategy was 1.82x faster.
+We conclude that start overs create a significant performance increase on the waypoints model.
+
+\begin{figure}[h]
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../evaluation/output-assets/EXP-04-start-overs-1.pdf}
+        \subcaption{Comparison of discovered waypoints}
+        \label{fig:evaluation:EXP-04:1}
+    \end{subfigure}
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../evaluation/output-assets/EXP-04-start-overs-3.pdf}
+        \subcaption{Comparison of total visited states}
+        \label{fig:evaluation:EXP-04:2}
+    \end{subfigure}
+    \caption{State space exploration with start overs}
+    \label{fig:evaluation:EXP-04}
+\end{figure}
+
+% TODO section summary
 
 \section{Low-Connectivity Model Evaluation}
 \label{section:evaluation:low-connectivity-model-evaluation}
 
-\section{Validating our implementation and reproducing results from the paper}
+% TODO link to low-connectivity definition and introduction
+In this section, we try to make key differences of low-connectivity state space exploration tangible.
+The paper suspects three models of being low-connectivity:
 
-We start the evaluation with executing the Waypoints model introduced in \cref{alg:waypoints-model}.
-Here, our model checker only implements a parallel BFS with state pruning using hash collisions.
-No other diversification techniques are applied.
+\begin{itemize}
+    \item Dining philosophers problem
+    \item Anderson queue lock mutual exclusion algorithm
+    \item Peterson mutual exclusion protocol
+\end{itemize}
 
-The results of this first experiment are visualized in \cref{fig:experiments:output1}.
-Both sides of the figure visualize the covered state space in relation to the executed VTs.
-On the left side, discovered waypoints are used as indicator.
-On the right side, the absolute count of the HLL divided by the total state space size is used.
+\subsection{Dining Philosophers Problem with Different Numbers of Processes}
 
-The first observation that can be drawn is, that both indicators are nearly identical.
-Having two indicators of state space coverage, we achieve high plausibility that both the waypoints as indicators of state space coverage and the HLL as actual counting of unique visited states operate as intended.
-
-Another observation is that even though \num{250000} VTs are executed, we only cover 35\% of the state space.
-This is far below the results from \cite{DeFrancisco2020.Grapple}, where all 100 waypoints are reached after about \num{100000} VTs.
-
-\begin{figure}[h]
-    \begin{subfigure}[b]{.5\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/experiments/output1-discovered-violations-abs-numbers.pdf}
-        \subcaption{Discovered violations, absolute numbers}
-    \end{subfigure}
-    \begin{subfigure}[b]{.5\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/experiments/output1-covered-state-space-in-percent.pdf}
-        \subcaption{Covered state space, in percent}
-    \end{subfigure}
-    \caption{Waypoints model, \num{1000} runs, $2^{18}$ hash table size, 0 start overs}
-    \label{fig:experiments:output1}
-\end{figure}
-
-There are two main implementation differences that we believe could lead to the results:
-
-In the paper, hash tables are used that can store nearly \num{400000} entries.
-Our hash table can only store \num{262144} entries.
-This means that approximately $\frac{1}{3}$ fewer states can be explored per VT, resulting in less depth.
-The size of our hash table cannot simply be increased, even though there is shared memory left, as our bit shift based hash bucket addressing only supports table sizes that are an exponent of two.
-
-Another reason may be that in the paper, the number of VTs per run/warp/\dots may be different:
-Initially, the paper states that they run \enquote{a single, internally parallel VT per warp}.
-Then, however, they state that each CUDA program \enquote{initializes a number of VTs, in this case 250}.
-When taking a look at the number of runs in relation to the number of discovered waypoints, results are similar to the paper again.
-
-% - Does it find all waypoints?
-% - Does the number of discovered waypoints represent the percentage of covered state space?
-% - Is the counted percentage of visited state space plausible?
-
-\section{Introducing Start Overs}
-
-Two key observations are that the state space exploration terminates when the hash table is full and that the rate of hash table collisions and, by that, the number of states that can be visited in a VT is mainly controlled by the hash table size.
-This lead to the idea of \emph{start overs}, which is based on the two-phase swarm of \cite{DeFrancisco2020.Grapple}.
-After a VT considers itself done,
-
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=.5\textwidth]{figures/experiments/output2-discovered-violations-abs-numbers.pdf}
-    \caption{Waypoints model, \num{1000} runs, $2^{14}$ hash table size, 15 start overs}
-    \label{fig:experiments:output2}
-\end{figure}
-
-% Philosophers ?? Anderson ??
-
-\section{Low-Connectivity Models}
-
-The Grapple paper suspects two models of being low-connectivity:
-Andersons queue lock mutual exclusion algorithm and the Dining Philosophers Problem.
-Both models are taken from the BEEM database. % TODO add citation to BEEM db
-
-The difference in model checking performance between the \emph{high-connectivity} Waypoints model and the \emph{low-connectivity} Anderson and Philosophers models can be observed by comparing the number of unique states visited of the models using the same model checker configuration.
-\cref{table:lc-comparison} contains results for the three models.
+The paper suggests that a state space size surpassing the hash table capacity significantly slows down the state space exploration, resulting in a higher number of VTs needed to achieve $>\SI{99}{\percent}$ state space coverage.
+To find out how much the state space size affects the exploration performance, we compared three variants with \numlist{11;12;13} processes of the dining philosophers problem.
+We expect a slow-down starting with 12 processes using our the default $2^{18}$ hash table capacity.
+As presented in \cref{table:EXP-10}, exploring DP-13 took 213x the VTs as for DP-11, even though it is only 9x its state space size.
+This confirmed our hypothesis of a significant slow-down for this particular model.
 
 \begin{table}[h]
-    \caption{Comparison of three models, executed with 250 VTs (one run), $2^{14}$ hash table size and 10 start overs}
-    \label{table:lc-comparison}
+    \caption{Exploration of the dining philosophers problem with \numlist{11;12;13} processes}
+    \label{table:EXP-10}
     \centering
     \begin{tabular}{l l l l}
         \toprule
-        Model          & Unique States Visited & Total States Visited & Covered State Space \\
+        Model & State Space Size & Hash Table Utilization & \# of VTs to explore                  \\
         \midrule
-        Anderson 3     & \num{284941}          & \num{26688449}       & -                   \\
-        Philosopher 15 & \num{7.87901e+06}     & \num{44674703}       & ~55\%               \\
-        Waypoints      & \num{3.18306e+07}     & \num{45032805}       & ~0.74\%             \\
+        DP-11 & \num{177146}     & ~\SI{68}{\percent}     & \SI{100}{\percent} in 250 VTs         \\
+        DP-12 & \num{531440}     & ~\SI{203}{\percent}    & \SI{100}{\percent} in 250 VTs         \\
+        DP-13 & \num{1594322}    & ~\SI{608}{\percent}    & \SI{100}{\percent} in \num{53250} VTs \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-\section{Optimizing Grapple on Low-Connectivity Models}
+\subsection{Comparison of Unique States Visited, Total States Visited and State Space Coverage}
 
-% How can the algorithm be altered so that it can efficiently search low-connectivity models?
-%% Precondition: We only consider models with >100% hash table utilization. Models with less utilization are checked exhaustively either way.
-%% Goal: Maximize state space coverage while minimizing the amount of VTs required to do so.
-%% Benchmark 1: Comparison with the baseline implementation.
-%% ? Benchmark 2: Comparison with the Waypoints model (how?) ?
+In the paper, the models yielded very different results concerning the unique and total states visited.
+Thus, the next experiment compares these performance indicators for our set of models on a fixed amount of \num{125000} VTs.
+We would expect clear differentiation between the models and eventually a clear distinction between high- and low-connectivity.
+Our results are displayed in \cref{table:EXP-12}.
+Clearly, the waypoints model achieved the highest number of total states visited.
+We further observed an interesting property by taking the unique states visited in relation to the total states visited, presented in the \emph{Rate} column:
+All three low-connectivity models achieved a rate $< \SI{0.1}{\percent}$.
+In conclusion, the performance deficiency of the three presented low-connectivity models can be observed through unique states visited and total states visited.
+
+\begin{table}[h]
+    \caption{Exploration of low-connectivity models, each after \num{125000} VTs}
+    \label{table:EXP-12}
+    \centering
+    \begin{tabular}{l l l l l}
+        \toprule
+        Model      & Unique States Visited & Total States Visited & Rate                 \\
+        \midrule
+        Anderson 3 & \num{1.22779e+06}     & \num{15477969183}    & \SI{0.008}{\percent} \\
+        Peterson 5 & \num{4.08578e+06}     & \num{24670432336}    & \SI{0.017}{\percent} \\
+        DP 15      & \num{1.38213e+07}     & \num{30436723433}    & \SI{0.045}{\percent} \\\addlinespace
+        Waypoints  & \num{1.21759e+09}     & \num{35725590331}    & \SI{3.408}{\percent} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{BFS Frontiers of Low-Connectivity Models}
+
+The algorithm introduced in \cref{section:theory:grapple-model-checker} is operating in alternating phases that produce so-called \emph{frontiers}.
+Each frontier is an intermediate state of the BFS, representing the deepest states found until now.
+A new frontier is built by checking whether generated successors were visited before.
+For this experiment, we called already visited states \emph{failed} and states added to the new frontier \emph{visited}.
+
+To find out whether different models affect the BFS frontiers in terms of visited and failed states, we executed a single VT and counted visited and failed states for each frontier generated.
+
+In Grapple, each BFS starts with a single initial state.
+As of this, we would expect the number of visited states to quickly build up until the number of failed states takes over due to the hash tables filling up.
+
+For visualization of BFS frontiers, we provide two different methods:
+
+\begin{enumerate}
+    \item Plotting the absolute number of visited and failed states.
+    \item Plotting visited and failed states in relation to each other, both adding up to \SI{100}{\percent}.
+\end{enumerate}
+
+\cref{fig:evaluation:EXP-11-1} presents both visualizations for the waypoints model.
+
+\begin{itemize}
+    \item WP, DP and Peterson showed the expected curve in both representations
+    \item WP, DP and Peterson have an upper limit of generated successor states per frontier
+    \item The amount of BFS rounds and number of states per round highly differed between models
+    \item The Anderson model showed two interesting differences: A big notch in the absolute representation (bottleneck?) and a near constant amount of visited states throughout all BFS rounds in the relative representation
+\end{itemize}
+
+\begin{figure}[b]
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../evaluation/output-assets/EXP-11-bfs-frontiers-1.pdf}
+        \label{fig:evaluation:EXP-11:1}
+    \end{subfigure}
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../evaluation/output-assets/EXP-11-bfs-frontiers-5.pdf}
+        \label{fig:evaluation:EXP-11:5}
+    \end{subfigure}
+    \caption{BFS frontier visualization of the waypoints model}
+    \label{fig:evaluation:EXP-11-1}
+\end{figure}
+
+\begin{figure}[p]
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../evaluation/output-assets/EXP-11-bfs-frontiers-2.pdf}
+        \label{fig:evaluation:EXP-11:2}
+    \end{subfigure}
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../evaluation/output-assets/EXP-11-bfs-frontiers-6.pdf}
+        \label{fig:evaluation:EXP-11:6}
+    \end{subfigure}
+
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../evaluation/output-assets/EXP-11-bfs-frontiers-3.pdf}
+        \label{fig:evaluation:EXP-11:3}
+    \end{subfigure}
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../evaluation/output-assets/EXP-11-bfs-frontiers-7.pdf}
+        \label{fig:evaluation:EXP-11:7}
+    \end{subfigure}
+
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../evaluation/output-assets/EXP-11-bfs-frontiers-4.pdf}
+        \label{fig:evaluation:EXP-11:4}
+    \end{subfigure}
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../evaluation/output-assets/EXP-11-bfs-frontiers-8.pdf}
+        \label{fig:evaluation:EXP-11:8}
+    \end{subfigure}
+
+    \caption{BFS frontier visualization of low-connectivity models}
+    \label{fig:evaluation:EXP-11-2}
+\end{figure}
+
+\FloatBarrier
+
+\subsection{Start Over Strategy on Low-Connectivity Models}
+
+Our last experiment evaluates whether the start over strategy yields the same performance increase shown in \cref{section:evaluation:start-overs} on low-connectivity models.
+For each of our three low-connectivity models, we conducted two explorations of 500 runs à 250 VTs.
+One with $2^{18}$ hash table slots and 0 start overs, the other one with $2^{14}$ hash table slots and 15 start overs (same configuration as in \cref{section:evaluation:start-overs}).
+
+\begin{itemize}
+    \item Most interesting result: On the Anderson model, start overs significantly worsen the exploration performance
+    \item DP and Peterson achieved similar results as for the waypoints model
+    \item For all three models, the execution time of the start over strategy was considerably lower
+\end{itemize}
+
+\begin{figure}
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../evaluation/output-assets/EXP-13-start-overs-low-connectivity-1.pdf}
+        \label{fig:evaluation:EXP-13:1}
+    \end{subfigure}
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../evaluation/output-assets/EXP-13-start-overs-low-connectivity-2.pdf}
+        \label{fig:evaluation:EXP-13:2}
+    \end{subfigure}
+    \begin{subfigure}[b]{\textwidth}
+        \centering
+        \includegraphics[width=.5\textwidth]{../evaluation/output-assets/EXP-13-start-overs-low-connectivity-3.pdf}
+        \label{fig:evaluation:EXP-13:3}
+    \end{subfigure}
+    \caption{Start over strategy on low-connectivity models}
+    \label{fig:evaluation:EXP-13}
+\end{figure}
 
 \chapter{Conclusion}
 
-\section{Future work}
+\section{Future Work}
 
-- Estimate state space size for models of unknown size
-- Automatically determine the optimal number of start overs
-- Implement usage of multiple GPU devices through CUDA streaming API
-- Analyze State Space Diversification, i.e. "how good is a partition?"
+\begin{itemize}
+    \item Estimate state space size for models of unknown size
+    \item Automatically determine the optimal number of start overs
+    \item Implement usage of multiple GPU devices through CUDA streaming API
+    \item Analyze State Space Diversification, i.e. "how good is a partition?"
+\end{itemize}
 
 \section{Discussion}
+
+\begin{itemize}
+    \item As in the evaluation: The Anderson model draws special interest: Its BFS frontiers show a unique behavior and using the start over strategy, it performs contrary to all other models.
+\end{itemize}
 
 % \appendix
 
