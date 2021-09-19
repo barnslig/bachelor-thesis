@@ -43,12 +43,18 @@ fancyheadings, % headings with seplines and logo
 \usegdlibrary{trees}
 
 % Common Grapple algorithm math procedures
-\DeclareMathOperator{\markVisited}{mark\_visited}
-\DeclareMathOperator{\qEmpty}{queue\_empty}
-\DeclareMathOperator{\qPop}{queue\_pop}
-\DeclareMathOperator{\qPush}{queue\_push}
-\DeclareMathOperator{\sSuccessor}{state\_successor}
-\DeclareMathOperator{\sViolates}{state\_violates}
+\DeclareMathOperator{\markVisited}{\texttt{mark\_visited}}
+\DeclareMathOperator{\qEmpty}{\texttt{queue\_empty}}
+\DeclareMathOperator{\qPop}{\texttt{queue\_pop}}
+\DeclareMathOperator{\qPush}{\texttt{queue\_push}}
+\DeclareMathOperator{\sSuccessor}{\texttt{state\_successor}}
+\DeclareMathOperator{\sViolates}{\texttt{state\_violates}}
+
+% Model definition math procedures
+\DeclareMathOperator{\branchFreeTernary}{\texttt{BranchFreeTernary}}
+
+% Bitstate hashing math procedures
+\DeclareMathOperator{\makeHash}{\texttt{make\_hash}}
 
 % Inline citation, e.g. "Foobar" by J. Doe [27]
 \newcommand{\citeinline}[1]{\citetitle{#1} by \citeauthor*{#1} \cite{#1}}
@@ -118,14 +124,23 @@ However, it fails when a model has only few edges between states or large portio
 
 \chapter{Related Work}
 
+\begin{itemize}
+    \item Parallel Breadth-First Search (BFS) \cite{Holzmann2012.Paralellizing-SPIN}
+    \item Swarm Verification \cite{Holzmann2008.Swarm-Verification}
+    \item Swarm Verification Techniques \cite{Holzmann2011.Swarm-Verification-Techniques}
+    \item Grapple Framework \cite{DeFrancisco2020.Grapple}
+    \item On-The-Fly State Generation on the GPU \cite{Bartocci2014.GPGPU-Parallel-SPIN}
+\end{itemize}
+
 \chapter{Background}
 
 This chapter gives a brief summary on the main topics that this thesis is based on.
-First, we define the scope of model checking that we are interested in.
-Then, we give an overview of Swarm Verification on the GPU and the specific problem that we are going to investigate: Low-Connectivity State Space Exploration.
-Last but not least, we give an introduction to the CUDA GPU programming framework.
+First, we define the scope of model checking that we are looking at in \cref{section:background:model-checking}.
+We continue with an overview of Swarm Verification on the GPU and the specific problem that we are going to investigate, low-connectivity state space exploration, in \cref{section:background:parallelized-model-checking}.
+Last but not least, we give an introduction to the CUDA GPU programming framework in \cref{section:background:cuda}.
 
 \section{Model Checking}
+\label{section:background:model-checking}
 
 % What is a model checker?
 % TODO Why do we search for counterexamples? The answer may fit better to the properties paragraph.
@@ -133,7 +148,7 @@ Last but not least, we give an introduction to the CUDA GPU programming framewor
 Model checking is a formal verification method that checks whether a state machine satisfies a specification.
 For example, the state machine of an elevator may be verified to meet the safety property of not opening the doors between floors.
 To do so, a \emph{model checker} searches the state space for counterexamples, also called violations.
-When a violation is found, the path of state transitions that lead to the violation is reported back.
+When a violation is found, the path of state transitions that leads to the violation is reported back.
 
 Model checking can be divided into three main problems:
 Description of models through state machines, definition of the specification through temporal logic, and algorithms that verify whether a state machine models a specification.
@@ -142,7 +157,7 @@ Description of models through state machines, definition of the specification th
 There are two main branches of model checking:
 Explicit-State Model Checking and Symbolic Model Checking.
 Explicit-State Model Checking can only verify finite state machines.
-In particular, the model has to have finite states, each state needs to be representable by a finite-size tuple containing its atomic propositions and the model changes state through execution of state transitions.
+In particular, the model has to have finite states, each state needs to be representable by a finite-size tuple containing its atomic propositions, and the model changes state through execution of state transitions.
 To overcome these limitations and verify potentially infinite-size state machines or systems of unknown structure, Symbolic Model Checking uses the abstraction of \emph{symbols}, each representing a set of states and transitions.
 Within this thesis, we are only considering explicit-state model checking.
 
@@ -168,13 +183,14 @@ However, even then, a non-parallel algorithm may need a lot of physical time for
 In exhaustive verification, all states are visited and checked for a violation.
 \cite{Clarke2018.Introduction-to-Model-Checking,Holzmann2018.Explicit-State-Model-Checking}
 
-\subsection{Parallelized model checking}
+\section{Parallelized Model Checking}
+\label{section:background:parallelized-model-checking}
 
 % How can model checking be speed up using parallelization?
 % TODO Do we need the algorithm summary?
 % TODO If yes, why leave the reader with "we are going to tell later"?
 The basic operation in an explicit-state model checker is a state space exploration loop, as defined in \cref{alg:fundamental-state-space-exploration}.
-Model checking can be speed up by parallelizing the state space exploration, for example using the parallel breadth-first search (BFS) from the paper \citeinline{Holzmann2012.Paralellizing-SPIN}.
+Model checking can be speed up by parallelizing the state space exploration, for example using a parallel breadth-first search (BFS) \cite{Holzmann2012.Paralellizing-SPIN}.
 
 %% What challenge is solved by Swarm Verification?
 A major challenge in parallelized BFS is the communication overhead between threads:
@@ -199,8 +215,8 @@ Shared memory does not allow to easily split the work onto a cluster of heteroge
 %% How does Swarm Verification work?
 %% How does Swarm Verification differ from other approaches?
 % TODO what is state space exploration?
-A new approach on parallelized model checking comes from the paper \citeinline{Holzmann2008.Swarm-Verification}.
-Swarm Verification solves the challenge of parallelizing state-space search by splitting the state space exploration into many small, independent, memory-limited tasks called \emph{Verification Tests} (VTs).
+Swarm Verification is a new approach on parallelized model checking \cite{Holzmann2008.Swarm-Verification}.
+It solves the challenge of parallelizing state-space search by splitting the state space exploration into many small, independent, memory-limited tasks called \emph{Verification Tests} (VTs).
 Each VT only covers a small subset of the total state space and, using \emph{diversification techniques}, uses a different search path.
 By executing all VTs and collecting their results, we still achieve nearly full state space coverage.
 
@@ -299,7 +315,7 @@ Each state exploration on its own does not cover the whole state space, however,
 \subsection{Grapple Framework}
 
 % What is Grapple?
-The paper \citeinline{DeFrancisco2020.Grapple}, on which this thesis is based, contributes the \emph{Grapple} framework for parallel swarm verification on the GPU using CUDA.
+The paper \citeinline{DeFrancisco2020.Grapple} which this thesis is based on contributes the \emph{Grapple} framework for parallel swarm verification on the GPU using CUDA.
 In their implementation of Swarm Verification, each VT's state space exploration runs in a parallel BFS, using CUDA's built-in synchronization primitives to coordinate threads.
 
 %% Which variations of the algorithm exist?
@@ -340,6 +356,7 @@ See \cref{fig:lc-ex} for examples of these properties.
 \end{figure}
 
 \section{CUDA}
+\label{section:background:cuda}
 
 % How can many small tasks be executed in parallel? What is CUDA?
 %% What challenge does CUDA solve?
@@ -362,23 +379,25 @@ The architecture allows scaling even further onto multiple GPUs.
 Furthermore, CUDA defines multiple memory levels, each with different size and access speed.
 % CUDA Toolkit v11.4.1, Programming Guide, Table 15
 
-\emph{Registers} are used for thread-local variables.
-There can be at max 255 registers à 32 bit per thread.
+\begin{itemize}
+    \item \emph{Registers} are used for thread-local variables.
+          There can be at max 255 registers à 32 bit per thread.
 
-% \emph{Local memory}
+          % \item \emph{Local memory}
 
-\emph{Shared memory} can only be accessed by the threads of the block in which it got allocated.
-As it is on-chip, it is faster than global memory.
-By default, there is 48 KB of shared memory.
+    \item \emph{Shared memory} can only be accessed by the threads of the block in which it got allocated.
+          As it is on-chip, it is faster than global memory.
+          By default, there is 48 KB of shared memory.
 
-\emph{Constant memory} is part of the device memory, with the constant cache in front of it.
-Cache hits are served at higher speed than just using global memory.
-There is 64 KB of constant memory.
+    \item \emph{Constant memory} is part of the device memory, with the constant cache in front of it.
+          Cache hits are served at higher speed than just using global memory.
+          There is 64 KB of constant memory.
 
-% \emph{Texture cache}
+          % \item \emph{Texture cache}
 
-\emph{Global memory} is the largest memory with usually multiple gigabytes of size.
-It is placed in device memory and thus also the slowest.
+    \item \emph{Global memory} is the largest memory with usually multiple gigabytes of size.
+          It is placed in device memory and thus also the slowest.
+\end{itemize}
 
 %% Why are GPUs so interesting for swarm verification / model checking?
 CUDA requires the problem to be solved by a program to be split into many small sub-problems.
@@ -394,12 +413,12 @@ This is a good fit with Swarm Verification, which turns the model checking probl
 
 This chapter gives a detailed explanation of the algorithms used by our model checker.
 It starts with an in-depth description of the Grapple framework's state space exploration loop and its components in \cref{section:theory:grapple-model-checker}
-We then continue with a list of known State Space Diversification Techniques in \cref{section:theory:state-space-diversification}.
+We then continue with a list of known state space diversification techniques in \cref{section:theory:state-space-diversification}.
 The chapter finishes with a solution to the problem of counting the number of unique states visited in Swarm Verification in \cref{section:theory:counting-unique-states-visited}.
 
 % TODO what about the theory behind low-conn models ?
 
-\section{Model definition}
+\section{Model Definition}
 \label{section:theory:model-definition}
 
 %% How are Models defined?
@@ -407,16 +426,16 @@ The model is defined using a \emph{Kripke Structure} $M = \left(S; S_0; R; L \ri
 
 %% How are properties defined? (temporal logic)
 
-\section{Grapple model checker}
+\section{Grapple Model Checker}
 \label{section:theory:grapple-model-checker}
 
 % How can the verification tests be run on GPUs using CUDA?
 In Grapple, each VT executes an internally parallel state space exploration.
 We call it \emph{internally parallel} to differentiate between the parallelism \emph{within} a VT and the parallelism \emph{between} multiple VTs.
 
-Each thread in a VT executes \cref{alg:grapple-state-space-exploration}, which is a more abstract version of Algorithm 1 from \citeinline{DeFrancisco2020.Grapple}.
+Each thread in a VT executes \cref{alg:grapple-state-space-exploration}, which is a more abstract version of the Grapple state space exploration loop (Algorithm 1 in \cite{DeFrancisco2020.Grapple}).
 We are going to call this algorithm the \emph{Grapple algorithm}.
-The Grapple algorithm is based on the parallel BFS from \citeinline{Holzmann2012.Paralellizing-SPIN}.
+The Grapple algorithm is based on Holzmann's parallel BFS \cite{Holzmann2012.Paralellizing-SPIN}.
 
 % TODO is this still true? i think no
 % We currently only support a single initial state.
@@ -474,7 +493,7 @@ This process repeats until no more unvisited successors are discovered.
 %% Which operations does the queues have?
 The queues support three operations: $\qPush(Q, state)$ adds a state to the back, $\qPop(Q)$ removes and returns the first state from the front and $\qEmpty(Q)$ tells whether a queue is empty.
 
-\subsection{Hash table}
+\subsection{Hash Table}
 \label{section:theory:hash-table}
 
 %% Which operations do the hash tables have?
@@ -559,17 +578,35 @@ Resulting from this, the algorithm at worst terminates after having visited the 
 \section{State Space Diversification}
 \label{section:theory:state-space-diversification}
 
+% TODO Section introduction
+% TODO Difference between graph partitioning and state space diversification?
+
 \subsection{Diversification Techniques}
 
-These diversification techniques exist:
+The following diversification techniques are known: \cite{Holzmann2011.Swarm-Verification-Techniques,DeFrancisco2020.Grapple}
 
-\begin{enumerate}
-    \item \textsf{State Pruning using Hash Collisions} \\ Each VT marks its visited states in a limited-size hash table with varying hash functions. Hash collisions cause different partitions of the state space. Hash table exhaustion causes termination of the exploration when all new states are supposedly already visited.
-    \item \textsf{Reversing search direction or order}
-    \item \textsf{Randomizing order of nondeterministic choice}
-    \item \textsf{Parallel Deep Search (PDS)}
-    \item \textsf{process-PDS}
-\end{enumerate}
+\begin{itemize}
+    \item \textsf{State Pruning using Hash Collisions} \\
+          Each VT marks its visited states in a limited-size hash table, each using a different hash function.
+          Hash collisions cause different partitions of the state space.
+          Hash table exhaustion causes termination of the exploration when all new states are supposedly already visited.
+    \item \textsf{Reverse order of nondeterministic choice} \\
+          Iterate through nondeterministic choices in reverse order, i.e. $\mathit{NDC}{\dots}0$.
+    \item \textsf{Reverse processes} \\
+          Iterate through processes in reverse order, i.e. $P{\dots}0$.
+    \item \textsf{Random order of nondeterministic choice} \\
+          Instead of iterating through nondeterministic choices from $0{\dots}\mathit{NDC}$, choosing one random order for each VT.
+          The random order remains the same through all searches in a VT.
+    \item \textsf{Random process order} \\
+          Instead of iterating through processes from $0{\dots}P$, choosing one random order for each VT.
+          The random order remains the same through all searches in a VT.
+    \item \textsf{Parallel Deep Search (PDS)} \\
+          Select one random nondeterministic choice per VT, discard others.
+          The selected nondeterministic choice remains the same through all searches in a VT.
+    \item \textsf{process-PDS} \\
+          Select one random process per VT, discard others.
+          The selected process remains the same through all searches in a VT.
+\end{itemize}
 
 \subsection{State Pruning and Start Overs}
 \label{section:theory:state-pruning}
@@ -581,7 +618,7 @@ These diversification techniques exist:
 % How does starting over solve the problem of a lowered hash table size?
 % How does starting over solve the problem of deep exploration?
 
-\section{Waypoints model}
+\section{Waypoints Model}
 \label{section:theory:waypoints-model}
 
 % Where does the WP model come from? What is it good for? (benchmark)
@@ -620,6 +657,11 @@ For example, 24 discovered waypoints means that approximately $24\%$ of the stat
         \EndFunction
     \end{algorithmic}
 \end{algorithm}
+
+\section{Low-Connectivity Models}
+
+% What is the challenge in exploring LC models using the presented algorithm?
+
 
 \section{Counting Unique States Visited}
 \label{section:theory:counting-unique-states-visited}
@@ -667,8 +709,8 @@ Using HLL++, we can count unique states visited.
 
 % What is the goal of our implementation?
 Our implementation serves two purposes:
-First, to reproduce the results from \cite{DeFrancisco2020.Grapple}.
-Second, as foundation for experimenting with the state space exploration of low-connectivity models.
+To reproduce the results from the Grapple paper \cite{DeFrancisco2020.Grapple}.
+And to run our experiment series on the state space exploration of low-connectivity models.
 
 % What is the content of this chapter?
 This chapter documents our implementation of a Grapple model checker.
@@ -683,20 +725,23 @@ We chose C++17 as programming language, so we can make full use of the CUDA Tool
 The CUDA Toolkit is used in version 11.4.
 As build system, CMake 3.16 is used.
 Code is written using the Object-Oriented Programming paradigm.
-
 %% Of which components does the Grapple model checker consist?
-% TODO visualize the architecture
 Our implementation consists of six components:
-1. The main program, running the CUDA kernels and collecting their results.
-2. The CUDA kernel, implementing a parallel state space exploration loop.
-3. The queues, providing lock-free communication between threads in a VT.
-4. The hash tables in which states are marked as visited.
-5. The model, providing successor generation and violation checking.
-6. The HyperLogLog, counting unique states visited across all VTs.
+
+\begin{enumerate}
+    \item The main program, running the CUDA kernels and collecting their results.
+    \item The CUDA kernel, implementing a parallel state space exploration loop.
+    \item The queues, providing lock-free communication between threads in a VT.
+    \item The hash tables in which states are marked as visited.
+    \item The model, providing successor generation and violation checking.
+    \item The HyperLogLog, counting unique states visited across all VTs.
+\end{enumerate}
+
+% TODO visualize the architecture
 
 In the following, we are going to describe the implementation-specific details and challenges of each component.
 
-\subsection{Main program}
+\subsection{Main Program}
 
 % What does the main program do?
 The main program runs in a single thread on the host.
@@ -708,7 +753,7 @@ Each thread represents a worker of a VT's parallel state space exploration.
 % How do we post-process output data of the kernels?
 After each run, the main program collects the discovered violations and number of unique states visited, accumulates them and prints them to the standard output line-by-line as CSV.
 
-\subsection{CUDA kernel}
+\subsection{CUDA Kernel}
 
 % What does the Grapple CUDA kernel do?
 The CUDA kernel executes the state space exploration loop, as described in \cref{section:theory:grapple-model-checker}.
@@ -765,20 +810,20 @@ The state instances are stored in the queues.
 State generation is usually heavily based on branching through \texttt{switch}- and \texttt{if}-conditions.
 However, CUDA's SIMT execution model, in which warps of 32 threads operate on same instruction, causes threads to pause when their execution paths diverge.
 This means that state generation through branching results in a slower CUDA execution.
-As a countermeasure, Algorithm 3 from \cite{Bartocci2014.GPGPU-Parallel-SPIN} proposes to calculate all possible state transitions every time, preserving the SIMT execution and at the same time creating different states in each thread.
+As a countermeasure, \citeauthor*{Bartocci2014.GPGPU-Parallel-SPIN} propose to calculate all possible state transitions every time, preserving the SIMT execution and at the same time creating different states in each thread \cite[Algorithm 3]{Bartocci2014.GPGPU-Parallel-SPIN}.
 To do so, it makes use of the custom ternary operator described in \cref{alg:branching-free-ternary-operator} that exploits the fact that boolean values evaluate to either zero or one.
 
 \begin{algorithm}
     \caption{Branching-Free Ternary Operator}
     \label{alg:branching-free-ternary-operator}
     \begin{algorithmic}
-        \Function{MyTernary}{bool c, int t, int f}
+        \Function{$\branchFreeTernary$}{bool c, int t, int f}
         \State \Return $c \cdot t + (1 - c) \cdot f$
         \EndFunction
     \end{algorithmic}
 \end{algorithm}
 
-Other than in \cite{Bartocci2014.GPGPU-Parallel-SPIN}, we do not fit a state's variables into a single integer using bit shifts.
+A key difference of our implementation is that we do not fit a state's variables into a single integer using bit shifts.
 Instead, we use regular C++ class data members.
 The increased memory demand by regular data members can be neglected, as the queues in which we store state instances are in global memory which is usually gigabytes in size.
 Also, the same behavior as in the paper can be achieved using C++ bit field members.
@@ -807,15 +852,15 @@ We translate DVE models into CUDA compatible C++ with the template described in 
         \State $guard_3 \gets state[p] = 1 \land glob > 2$
 
         \LComment{Transition from state 0 to 1}
-        \State $next.state \gets \operatorname{MyTernary}(guard_1, 1, state.state)$
+        \State $next.state \gets \branchFreeTernary(guard_1, 1, state.state)$
 
         \LComment{Transition from state 1 to 1}
-        \State $next.glob \gets \operatorname{MyTernary}(guard_2, state.glob + 1, state.glob)$
-        \State $next.state \gets \operatorname{MyTernary}(guard_2, 1, next.state)$
+        \State $next.glob \gets \branchFreeTernary(guard_2, state.glob + 1, state.glob)$
+        \State $next.state \gets \branchFreeTernary(guard_2, 1, next.state)$
 
         \LComment{Transition from state 1 to 0}
-        \State $next.glob \gets \operatorname{MyTernary}(guard_3, 0, next.glob)$
-        \State $next.state \gets \operatorname{MyTernary}(guard_3, 0, next.state)$
+        \State $next.glob \gets \branchFreeTernary(guard_3, 0, next.glob)$
+        \State $next.state \gets \branchFreeTernary(guard_3, 0, next.state)$
 
         \Statex
 
@@ -827,13 +872,20 @@ We translate DVE models into CUDA compatible C++ with the template described in 
 % https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#simt-architecture
 % https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#control-flow-instructions
 
-\subsection{Hash tables}
+\subsection{Hash Tables}
+\label{section:implementation:hash-tables}
 
 The hash tables provide a data structure in which states are marked as visited.
 They are only used on-device within the CUDA kernel and stored in shared memory, resulting in a highly constrained size.
 Each VT operates on a single hash table, meaning that all threads in a block share one hash table.
-For memory efficiency, we use bitstate hashing, as done in \cite{DeFrancisco2020.Grapple}.
+For memory efficiency, we use bitstate hashing \cite{DeFrancisco2020.Grapple}.
 Our hash tables can store $2^{18}=\num{262144}$ states, taking up \num{32768} bytes of shared memory.
+
+% How does bitstate hashing work?
+In bitstate hashing, a single bit represents whether a state is visited.
+Per clock cycle, CUDA can transmit 32 bit of shared memory, which is stored in 32-bit words.
+Resulting from this, we use a bucket size of 32 bit.
+The bit representing whether a state is visited is then computed using \cref{alg:bitstate-hashing}.
 
 % How can we control collisions?
 The hash function's goal is to map random data with unknown distribution onto a nearly uniform distribution, so each bucket of the hash table is used equally likely.
@@ -843,12 +895,6 @@ The MurMurHash3\footnote{\url{https://github.com/aappleby/smhasher}}, which is u
 Hash collisions resulting in false-positives are intended, as explained in \cref{section:theory:state-pruning}.
 To achieve that in every VT different states cause a collision, each is including a different seed into the hash.
 The rate of collisions can then be controlled by the hash table's size.
-
-% How does bitstate hashing work?
-In bitstate hashing, a single bit represents whether a state is visited.
-Per clock cycle, CUDA can transmit 32 bit of shared memory, which is stored in 32-bit words.
-Resulting from this, we use a bucket size of 32 bit.
-The bit representing whether a state is visited is then computed using \cref{alg:bitstate-hashing}.
 
 \begin{algorithm}
     \caption{Bitstate hashing}
@@ -860,7 +906,7 @@ The bit representing whether a state is visited is then computed using \cref{alg
         \Statex
 
         \Function{$\markVisited$}{state}
-        \State $hash \gets \operatorname{make\_hash}(state, seed) \bitwiseAnd (1 << N) - 1$
+        \State $hash \gets \makeHash(state, seed) \bitwiseAnd (1 << N) - 1$
 
         \LComment{First 5 bits ($2^5=32$) are the index within the bucket}
         \State $elem \gets hash >> (N - 5)$
@@ -872,7 +918,7 @@ The bit representing whether a state is visited is then computed using \cref{alg
         \State $isVisited \gets table[bucket] \bitwiseAnd (1 << elem) \neq 0$
 
         \LComment{Update hash bucket}
-        \State $table[bucket] \mathbin{\text{|=}} (1 << elem)$
+        \State $table[bucket] \gets table[bucket] \bitwiseOr (1 << elem)$
 
         \Statex
 
@@ -903,15 +949,116 @@ To verify a model using our model checker, a user has to complete the following 
     \item Interpret the CSV output
 \end{enumerate}
 
-\chapter{Experiments}
+\chapter{Evaluation}
 
-This chapter shows experimental results of our implementation.
-All experiments are done on an NVIDIA GeForce RTX 2080 Ti GPU, using the randomly chosen hash seed 1736331306.
+% This chapter presents empirical experimental results of our implementation.
+This chapter presents our series of empirical experiments conducted on our implementation.
+It starts with experiments on the correctness of our implementation and a comparison with the Grapple paper's results in \cref{section:evaluation:correctness-comparison-with-paper}.
+We then continue with a series of experiments that compare the Waypoints model, which is known to be high-connectivity, with three low-connectivity models in \cref{section:evaluation:low-connectivity-model-evaluation}.
+
+All experiments are performed on an NVIDIA GeForce RTX 2080 Ti GPU, using the randomly chosen hash seed 1736331306.
 
 The calculation of visited state space is done using a HLL with $2^{14}$ registers.
+% TODO move the following sentences into the HyperLogLog's theory section
 This means that there may be a relative error of $\sigma=1.04 / \sqrt{2^{14}}=\num{0.008125}$.
 The 65\% error bound for each value $x$ is then $\left[x \cdot (1-\sigma), x \cdot (1+\sigma)\right]$.
 95\% and 99\% can be reached using $2\sigma$ and $3\sigma$.
+
+\section{Correctness and Comparison with the Paper}
+\label{section:evaluation:correctness-comparison-with-paper}
+
+We start the evaluation with whether our implementation reaches the same number of discovered waypoints in relation to the amount of executed VTs as presented in the Grapple paper.
+We would expect both implementation to behave similarly, discovering at least 80 waypoints in \num{20000} VTs and all 100 waypoints in about \num{100000} VTs, as shown in \cref{fig:evaluation:EXP-00:1}.
+However, that is clearly not the case, as presented in \cref{fig:evaluation:EXP-00:2}.
+Our implementation finds significantly fewer waypoints, even though the amount of VTs is 2.5x larger.
+
+To further investigate differences between the implementations, we conduct additional experiments.
+
+\begin{figure}[h]
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../evaluation/assets/EXP-00-grapple-paper-waypoints.png}
+        \subcaption{Results from the paper. We are only interested in \emph{Full-Warp Grapple}}
+        \label{fig:evaluation:EXP-00:1}
+    \end{subfigure}
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../evaluation/output-assets/EXP-00-comparison-with-paper.pdf}
+        \subcaption{Results of our implementation}
+        \label{fig:evaluation:EXP-00:2}
+    \end{subfigure}
+    \caption{Waypoints model, comparison between reference and our implementation}
+    \label{fig:evaluation:EXP-00}
+\end{figure}
+
+\subsection{Comparison of Waypoints and HLL as Estimators of State Space Coverage}
+
+As explained in \cref{section:theory:waypoints-model}, counting waypoints is a method for estimating the achieved state space coverage.
+To make sure that the discovered waypoints of our implementation correctly indicate the state space coverage, we compare them to the state space coverage estimation of the HyperLogLog introduced in \cref{section:theory:counting-unique-states-visited}.
+We would expect both estimators to show similar results.
+For example, when 20 waypoints are discovered, the HyperLogLog estimation should show about 20\% state space coverage.
+
+In \cref{fig:evaluation:EXP-01}, results for both estimators are presented.
+Clearly, both resemble each other closely.
+Thus, we assume them to work correct.
+This also confirms the results from our first experiment, underlining our implementation's deficient state space exploration.
+
+\begin{figure}[h]
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../evaluation/output-assets/EXP-01-comparison-waypoints-hll-1.pdf}
+        \subcaption{HLL state space coverage estimation}
+        \label{fig:evaluation:EXP-01:1}
+    \end{subfigure}
+    \begin{subfigure}[b]{.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../evaluation/output-assets/EXP-01-comparison-waypoints-hll-2.pdf}
+        \subcaption{Waypoints state space coverage estimation}
+        \label{fig:evaluation:EXP-01:2}
+    \end{subfigure}
+    \caption{Comparison between Waypoints and HyperLogLog state space coverage estimation}
+    \label{fig:evaluation:EXP-01}
+\end{figure}
+
+\subsection{Impact of Hash Table Size and Sequential VT Execution}
+
+We've identified two key differences of our implementation:
+\begin{enumerate}
+    \item Our hash tables are 33\% smaller than in the paper.
+          This is due to our bit shift implementation presented in \cref{section:implementation:hash-tables} which cannot address the full 48 KB of shared memory.
+    \item We batch VTs in a CUDA kernel, each executing 250 at once.
+          In the paper, there seems to be only a single VT per CUDA kernel.
+\end{enumerate}
+
+To find out whether increasing the hash table size to full 48 KB increases waypoint discovery such that it is similar to the results from the Grapple paper, we've experimentally changed our implementation's addressing.
+As the hash table capacity should significantly affect the state space coverage of each VT, we would assume results close to those from the paper.
+For each experiment, we've executed 80 runs à 250 VTs (= \num{20000} VTs in total).
+Results are shown in \cref{table:EXP-02}.
+
+The larger hash table yields 2.1x as much state space coverage at only 1.45x as many total states visited.
+Thus, a larger hash table seems beneficial on this particular model.
+
+However, in the paper, a Grapple swarm verification with \num{392800} hash table slots per VT after \num{20000} VTs discovered 85 waypoints, equalling 85\% state space coverage, which is about 3.7x as much as our large-size hash table implementation.
+Resulting from this, the large-size hash table is still far from reproducing the paper's results.
+
+\begin{table}[h]
+    \caption{Comparison of different hash table capacities after 80 runs à 250 VTs on the waypoints model}
+    \label{table:EXP-02}
+    \centering
+    \begin{tabular}{l l l l}
+        \toprule
+        HT Capacity  & State Space Coverage & Total States Visited \\
+        \midrule
+        \num{262144} & 11.04\%              & \num{63568607}       \\
+        \num{393056} & 23.14\%              & \num{91937680}       \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+% TODO EXP-03
+
+\section{Low-Connectivity Model Evaluation}
+\label{section:evaluation:low-connectivity-model-evaluation}
 
 \section{Validating our implementation and reproducing results from the paper}
 
@@ -1014,6 +1161,8 @@ The difference in model checking performance between the \emph{high-connectivity
 
 - Estimate state space size for models of unknown size
 - Automatically determine the optimal number of start overs
+- Implement usage of multiple GPU devices through CUDA streaming API
+- Analyze State Space Diversification, i.e. "how good is a partition?"
 
 \section{Discussion}
 
