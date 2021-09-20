@@ -136,13 +136,16 @@ Contributions:
 
 \chapter{Related Work}
 
-\begin{itemize}
-    \item Parallel Breadth-First Search (BFS) \cite{Holzmann2012.Paralellizing-SPIN}
-    \item Swarm Verification \cite{Holzmann2008.Swarm-Verification}
-    \item Swarm Verification Techniques \cite{Holzmann2011.Swarm-Verification-Techniques}
-    \item Grapple Framework \cite{DeFrancisco2020.Grapple}
-    \item On-The-Fly State Generation on the GPU \cite{Bartocci2014.GPGPU-Parallel-SPIN}
-\end{itemize}
+\emph{Swarm Verification} was first studied by \citeauthor*{Holzmann2008.Swarm-Verification} as a verification method for models with large state spaces that do not allow exhaustive verification in any reasonable amount of time \cite{Holzmann2008.Swarm-Verification}.
+
+Continuing their work, they introduced multiple swarm verification implementation techniques, including a memory-efficient method of marking states as visited, multiple state space diversification techniques, and an evaluation of swarm verification performance on a number of real-world models \cite{Holzmann2011.Swarm-Verification-Techniques}.
+
+This thesis is based on the \emph{Grapple framework}, which implements Swarm Verification on the GPU using the CUDA parallel programming framework.
+To do so, they combined Swarm Verification and its techniques with a lock-free, parallel breadth-first search and an on-the-fly state generator specifically designed for GPUs \cite{DeFrancisco2020.Grapple}.
+
+The parallel BFS is adopted from a paper that parallelized the state space exploration loop of the SPIN model checker \cite{Holzmann2012.Paralellizing-SPIN}.
+
+The state generation is adopted from a paper which studied parallelization of the SPIN model checker on the GPU \cite{Bartocci2014.GPGPU-Parallel-SPIN}.
 
 \chapter{Background}
 
