@@ -1,0 +1,4 @@
+font.size: 13 # default: 10
+axes.titlesize: medium # default: large
+figure.subplot.left: 0.1625 # 0.125 * 13/10
+figure.subplot.bottom: 0.143 # 0.11 * 13/10
