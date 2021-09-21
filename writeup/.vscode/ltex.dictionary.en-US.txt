@@ -18,3 +18,4 @@ pseudorandom
 PRNG
 bitstate
 HLL
+Threadripper
