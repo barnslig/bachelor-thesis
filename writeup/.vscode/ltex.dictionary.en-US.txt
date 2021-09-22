@@ -19,3 +19,6 @@ PRNG
 bitstate
 HLL
 Threadripper
+Kripke
+NDCs
+nondeterministically
