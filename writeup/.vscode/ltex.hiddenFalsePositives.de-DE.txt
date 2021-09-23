@@ -1,0 +1,1 @@
+{"rule":"STATT","sentence":"^\\QIch erkläre hiermit an Eides Statt, dass ich die vorliegende Arbeit selbständig sowie ohne unzulässige Hilfe Dritter und ohne Benutzung anderer als der angegebenen Hilfsmittel angefertigt habe.\\E$"}
