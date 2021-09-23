@@ -22,3 +22,5 @@ Threadripper
 Kripke
 NDCs
 nondeterministically
+FPGAs
+DiVinE

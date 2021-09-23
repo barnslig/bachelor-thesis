@@ -136,16 +136,58 @@ Contributions:
 
 \chapter{Related Work}
 
-\emph{Swarm Verification} was first studied by \citeauthor*{Holzmann2008.Swarm-Verification} as a verification method for models with large state spaces that do not allow exhaustive verification in any reasonable amount of time \cite{Holzmann2008.Swarm-Verification}.
+\emph{Swarm Verification} was first studied by \citeauthor*{Holzmann2008.Swarm-Verification} as verification method for models with large state spaces on which an exhaustive verification cannot be completed in any reasonable amount of time due to the state explosion problem \cite{Holzmann2008.Swarm-Verification}.
+It was first used as an extension to the SPIN model checker.
+Techniques for implementing swarm verification were introduced in \cite{Holzmann2011.Swarm-Verification-Techniques}, including a memory-efficient method of marking states as visited called \emph{bit state hashing}, multiple state space diversification techniques, and an evaluation of swarm verification performance on real-world models.
 
-Continuing their work, they introduced multiple swarm verification implementation techniques, including a memory-efficient method of marking states as visited, multiple state space diversification techniques, and an evaluation of swarm verification performance on a number of real-world models \cite{Holzmann2011.Swarm-Verification-Techniques}.
+This thesis is based on the Grapple model checking framework \cite{DeFrancisco2020.Grapple}.
+They implement an explicit-state \cite{Holzmann2018.Explicit-State-Model-Checking}, on-the-fly, parallel swarm verification model checker on the GPU using the CUDA framework \cite{CUDA-Programming-Guide}.
+Our implementation tries to stay as close as possible to theirs, with three noteworthy exceptions:
 
-This thesis is based on the \emph{Grapple framework}, which implements Swarm Verification on the GPU using the CUDA parallel programming framework.
-To do so, they combined Swarm Verification and its techniques with a lock-free, parallel breadth-first search and an on-the-fly state generator specifically designed for GPUs \cite{DeFrancisco2020.Grapple}.
+\begin{itemize}
+    \item To simplify the bit state hashing, we calculate bucket and element using bit shifts instead of arithmetic operations, resulting in a smaller hash table as we cannot address the full \SI{48}{\kibi\byte} of shared memory.
+    \item To estimate unique states visited, we use a HyperLogLog++ instead of accurate counting using a global hash table.
+    \item To go deeper in a state space exploration, we extend the algorithm by a self-contained strategy named \emph{start overs} that is applied directly on-device within the GPU kernel, instead of the scatter-PDS approach used in Grapple where continuation of a search is controlled by the host.
+\end{itemize}
 
-The parallel BFS is adopted from a paper that parallelized the state space exploration loop of the SPIN model checker \cite{Holzmann2012.Paralellizing-SPIN}.
+A key difference between Grapple and the SPIN swarm verification is the highly constrained hash table size in Grapple, which stores its hash tables in CUDA's \SI{48}{\kibi\byte} of shared memory.
+In the SPIN implementation, the hash table size is decided per model, often multiple megabytes in size.
+An evaluation of using small hash tables is done on an implementation of swarm verification using FPGAs, from which Grapple also adapts its structure of internal components within VTs \cite{Cho2018}.
+A key observation of said evaluation is that in the SPIN implementation, the waypoints benchmark model is explored fastest using \SI{256}{\mega\byte} hash tables, which is considerably larger than in the FPGA and GPU swarms.
+Even though its smaller hash tables, both the FPGA and GPU swarm outperform the SPIN swarm in execution time on the waypoints model, underlining the performance benefit of massive parallelization of swarm verification.
 
-The state generation is adopted from a paper which studied parallelization of the SPIN model checker on the GPU \cite{Bartocci2014.GPGPU-Parallel-SPIN}.
+Exhaustive multi-core parallel model checking is a research area with numerous approaches, including parallelization of the SPIN model checker \cite{Holzmann2004} and the parallel DiVinE model checker \cite{Barnat2008, Barnat2007}.
+Both approaches share using a parallel breadth-first search (BFS) and support verification of liveness properties.
+However, the SPIN approach only supports a sub-class of liveness properties that can be reduced into safety properties called \emph{bounded liveness} \cite{Holzmann2012.Paralellizing-SPIN}.
+The Grapple framework is re-using the parallel BFS from the SPIN-approach for parallelization within VTs, which we are explaining in-depth in \cref{section:theory:queues} and \cref{section:implementation:queues}.
+
+In \cite{Bartocci2014.GPGPU-Parallel-SPIN}, the authors of the Grapple framework lay its foundations by extending the SPIN model checker to run its parallel BFS state space exploration \cite{Holzmann2012.Paralellizing-SPIN} on the GPU using CUDA.
+Most notably, they already use on-the-fly successor generation on the GPU.
+For that, they introduce an algorithm that allows successors to be generated without branching through \texttt{if}-/\texttt{else}-/\texttt{switch}-conditions, which we are explaining in-depth in \cref{section:theory:model-definition} and \cref{section:implementation:successor-generation}.
+The leading differences to the Grapple framework are that they perform an exhaustive verification and that synchronization of threads is done using a custom \emph{fast-barrier synchronization} instead of using native CUDA \texttt{\_\_syncthreads()}.
+
+Another approach to model checking on the GPU is performed by DiVinE-CUDA \cite{Barnat2009.DiVinE-CUDA}.
+Their work is focussed on finding accepting cycles, and thus verification of liveness properties, by reformulating the maximal accepting predecessors (MAP) algorithm to be conducted as matrix-vector multiplication on the GPU \cite{Barnat2009}.
+Even though the approach supports on-the-fly verification using similar operations for successor generation and violation checking as the Grapple framework, it cannot simply be added to a swarm verification.
+In swarm verification, no explicit state graph is built up during verification, or in other words, no explicit history of already visited states is kept.
+This introduces a severe difficulty on verifying whole paths for liveness properties.
+
+% TODO GPUexplore \cite{Wijs2014, Wijs2016}
+
+Probabilistic cardinality estimation is an extensively covered research area due to its wide range of applications in internet-based applications.
+A comparison of available algorithms can be found in \cite{Metwally2008}.
+We chose to use the HyperLogLog++ (HLL) algorithm, which improves the HyperLogLog algorithm \cite{Flajolet2007.HyperLogLog} for very large and very small cardinalities, and allows counting beyond a billion, which is necessary to, for example, count unique states visited of the waypoints model.
+HLL is a distributed, highly memory-efficient probabilistic cardinality estimator with a fixed error \cite{Heule2013.HyperLogLog++}.
+It is especially well-suited for counting unique states visited in swarm verification for multiple reasons:
+Most importantly, each HLL takes up only a few kilobytes to count into the billions, meaning that it can be stored in CUDA shared memory.
+HLLs can be merged, so independence of VTs is preserved.
+Due to \texttt{add} and \texttt{estimate} operations being separate from each other, we can use only the low-complexity \texttt{add} operation on the GPU and defer the estimation to the host, so no significant computational overhead is added to the state space exploration.
+Having a fixed error, it creates the possibility of giving probabilistic guarantees on the state space coverage of a swarm verification.
+
+Looking beyond model checking, \emph{graph partitioning} is an intuitively related problem to swarm verification.
+In graph partitioning, a graph is cut into mutual exclusive groups, so, for example, distributed algorithms can be run on them.
+An interesting approach in terms of on-the-fly verification are the streaming graph partitioning algorithms, which receive edges or vertices of a graph in a random order as inputs and produce partitions on them using heuristics \cite{Stanton2012}.
+A main difference to diversification in swarm verification is that states are distributed onto their partitions as they arrive, which, in a naive implementation, would require the search for violations to be conducted as separate step after partitioning.
 
 \chapter{Background}
 
@@ -323,7 +365,7 @@ Each state exploration on its own does not cover the whole state space, however,
         }
         \subcaption*{Collision: \{E, F\}}
     \end{subfigure}
-    \caption{State pruning using hash collisions}
+    \caption{State pruning using hash collisions \cite{DeFrancisco2020.Grapple}}
     \label{fig:hash-collision-state-pruning}
 \end{figure}
 
@@ -375,7 +417,7 @@ See \cref{fig:lc-ex} for examples of these properties.
 
 % How can many small tasks be executed in parallel? What is CUDA?
 %% What challenge does CUDA solve?
-CUDA is NVIDIA's proprietary GPU programming framework that provides automatic massive scalability.
+CUDA is NVIDIA's proprietary GPU programming framework that provides automatic massive scalability \cite{CUDA-Programming-Guide}.
 
 %% What is the abstraction model of CUDA?
 The CUDA model defines a three-level abstraction.
@@ -401,11 +443,11 @@ Furthermore, CUDA defines multiple memory levels, each with different size and a
 
     \item \emph{Shared memory} can only be accessed by the threads of the block in which it got allocated.
           As it is on-chip, it is faster than global memory.
-          By default, there is 48 KB of shared memory.
+          By default, there is \SI{48}{\kibi\byte} of shared memory.
 
     \item \emph{Constant memory} is part of the device memory, with the constant cache in front of it.
           Cache hits are served at higher speed than just using global memory.
-          There is 64 KB of constant memory.
+          There is \SI{64}{\kibi\byte} of constant memory.
 
           % \item \emph{Texture cache}
 
@@ -564,7 +606,7 @@ Instead, we can estimate the state space coverage, as described in \cref{section
 % Termination: When/Does/Under which (input) conditions does the algorithm terminate?
 \paragraph{Termination}
 The algorithm terminates when there are no more unvisited state successors according to the hash table, as explained in \cref{section:theory:hash-table}.
-In this case, all input queues of the next phase remain empty, i.e. $Q\left[1 - t\right]\left[0 \dots N\right]\left[0 \dots N\right] = \emptyset$.
+Then, all input queues of the next phase remain empty, i.e. $Q\left[1 - t\right]\left[0 \dots N\right]\left[0 \dots N\right] = \emptyset$.
 Resulting from this, the algorithm at worst terminates after having visited the number of states being the minimum of queue size and state space size.
 
 % There are two reasons why at some point no more unvisited states get discovered:
@@ -818,6 +860,7 @@ The CUDA kernel executes the state space exploration loop, as described in \cref
 %% How can the variations (PDS, process-PDS, scatter-PDS, ...) be implemented?
 
 \subsection{Queues}
+\label{section:implementation:queues}
 
 % How are the queues implemented?
 The queues provide a data structure for lock-free communication between threads in a VT, as described in \cref{section:theory:queues}.
@@ -860,6 +903,7 @@ By adding up all products, and adding the index of the current input queue, we g
 \end{figure}
 
 \subsection{Model and Successor Generation}
+\label{section:implementation:successor-generation}
 
 % How are models implemented?
 Models are implemented using a data structure that represents a current state.
@@ -888,7 +932,7 @@ Instead, we use regular C++ class data members.
 The increased memory demand by regular data members can be neglected, as the queues in which we store state instances are in global memory which is usually gigabytes in size.
 Also, the same behavior as in the paper can be achieved using C++ bit field members.
 
-Using our custom ternary, we can re-use DVE models from the discontinued BEEM model database\footnote{\url{https://paradise.fi.muni.cz/beem/}}.
+Using our custom ternary, we can re-use DVE models from the BEEM model database\footnote{\url{https://paradise.fi.muni.cz/beem/} (discontinued)}.
 DVE is a file format used by the DIVINE 3 model checker.
 We translate DVE models into CUDA compatible C++ with the template described in \cref{alg:on-the-fly-state-generation-on-the-gpu}.
 
@@ -949,8 +993,8 @@ The bit representing whether a state is visited is then computed using \cref{alg
 
 % How can we control collisions?
 The hash function's goal is to map random data with unknown distribution onto a nearly uniform distribution, so each bucket of the hash table is used equally likely.
-In our implementation, hashing is done using the Jenkins Hash function\footnote{\url{https://www.burtleburtle.net/bob/hash/doobs.html}}.
-The MurMurHash3\footnote{\url{https://github.com/aappleby/smhasher}}, which is used by our HyperLogLog, yields similar results.
+In our implementation, hashing is done using the Jenkins Hash function \cite{JenkinsHash}.
+The MurmurHash3 \cite{MurmurHash3}, which is used by our HyperLogLog, yields similar results.
 
 Hash collisions resulting in false-positives are intended, as explained in \cref{section:theory:hash-table}.
 To achieve that in every VT different states cause a collision, each is including a different seed into the hash.
@@ -1016,7 +1060,7 @@ This chapter presents our series of empirical experiments conducted on our imple
 It starts with experiments on the correctness of our implementation and a comparison with the Grapple paper's results in \cref{section:evaluation:correctness-comparison-with-paper}.
 We then continue with a series of experiments that compare the Waypoints model, which is known to be high-connectivity, with three low-connectivity models in \cref{section:evaluation:low-connectivity-model-evaluation}.
 
-All experiments are performed on an NVIDIA GeForce RTX 2080 Ti GPU, AMD Ryzen Threadripper 2990WX CPU and 128 GB main memory using Ubuntu 20.04.2 LTS.
+All experiments are performed on an NVIDIA GeForce RTX 2080 Ti GPU, AMD Ryzen Threadripper 2990WX CPU and \SI{128}{\giga\byte} main memory using Ubuntu 20.04.2 LTS.
 All values related to state space coverage are estimated using a HLL with $2^{14}$ registers and thus prone to an error, as explained in \cref{section:theory:counting-unique-states-visited}.
 
 \section{Correctness and Comparison with the Paper}

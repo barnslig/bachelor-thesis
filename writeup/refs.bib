@@ -1,7 +1,7 @@
+% Encoding: UTF-8
 @inproceedings{Bartocci2014.GPGPU-Parallel-SPIN,
   title     = {Towards a GPGPU-Parallel SPIN Model Checker},
   author    = {Bartocci, Ezio and DeFrancisco, Richard and Smolka, Scott A.},
-  year      = 2014,
   booktitle = {Proceedings of the 2014 International SPIN Symposium on Model Checking of Software},
   location  = {San Jose, CA, USA},
   publisher = {Association for Computing Machinery},
@@ -10,8 +10,9 @@
   pages     = {87–96},
   doi       = {10.1145/2632362.2632379},
   isbn      = 9781450324526,
-  numpages  = 10,
-  keywords  = {State Space Exploration, CUDA, Multicore, GPGPU, SPIN, Model Checking}
+  date      = 2014,
+  groups    = {Model Checking on the GPU},
+  numpages  = 10
 }
 @inbook{Clarke2018.Introduction-to-Model-Checking,
   title     = {Introduction to Model Checking},
@@ -23,29 +24,32 @@
   pages     = {1--26},
   doi       = {10.1007/978-3-319-10575-8_1},
   isbn      = {978-3-319-10575-8},
-  editor    = {Clarke, Edmund M. and Henzinger, Thomas A. and Veith, Helmut and Bloem, Roderick}
+  groups    = {Foundations}
 }
 @article{DeFrancisco2020.Grapple,
-  title   = {Swarm model checking on the GPU},
-  author  = {DeFrancisco, Richard and Cho, Shenghsun and Ferdman, Michael and Smolka, Scott A.},
-  year    = 2020,
-  month   = 10,
-  day     = {01},
-  journal = {International Journal on Software Tools for Technology Transfer},
-  volume  = 22,
-  number  = 5,
-  pages   = {583--599},
-  doi     = {10.1007/s10009-020-00576-x},
-  issn    = {1433-2787}
+  title    = {Swarm model checking on the GPU},
+  author   = {DeFrancisco, Richard and Cho, Shenghsun and Ferdman, Michael and Smolka, Scott A.},
+  year     = 2020,
+  month    = 10,
+  day      = {01},
+  journal  = {International Journal on Software Tools for Technology Transfer},
+  volume   = 22,
+  number   = 5,
+  pages    = {583--599},
+  doi      = {10.1007/s10009-020-00576-x},
+  issn     = {1433-2787},
+  groups   = {Model Checking on the GPU, Swarm Verification},
+  priority = {prio1}
 }
 @article{Flajolet2007.HyperLogLog,
-  title   = {{HyperLogLog: the analysis of a near-optimal cardinality estimation algorithm}},
-  author  = {Philippe Flajolet and Éric Fusy and Olivier Gandouet and Frédéric Meunier},
+  title   = {HyperLogLog: the analysis of a near-optimal cardinality estimation algorithm},
+  author  = {Flajolet, Philippe and Fusy, Éric and Gandouet, Olivier and Meunier, Frédéric},
   year    = 2007,
-  month   = Jan,
-  journal = {{Discrete Mathematics \& Theoretical Computer Science}},
-  volume  = {{DMTCS Proceedings vol. AH, 2007 Conference on Analysis of Algorithms (AofA 07)}},
-  doi     = {10.46298/dmtcs.3545}
+  month   = 1,
+  journal = {Discrete Mathematics \& Theoretical Computer Science},
+  volume  = {DMTCS Proceedings vol. AH, 2007 Conference on Analysis of Algorithms (AofA 07)},
+  doi     = {10.46298/dmtcs.3545},
+  groups  = {Probabilistic Cardinality Estimation}
 }
 @inproceedings{Heule2013.HyperLogLog++,
   title     = {HyperLogLog in Practice: Algorithmic Engineering of a State of the Art Cardinality Estimation Algorithm},
@@ -59,6 +63,7 @@
   pages     = {683–692},
   doi       = {10.1145/2452376.2452456},
   isbn      = 9781450315975,
+  groups    = {Probabilistic Cardinality Estimation},
   numpages  = 10
 }
 @inproceedings{Holzmann2008.Swarm-Verification,
@@ -66,10 +71,10 @@
   author    = {Holzmann, Gerard J. and Joshi, Rajeev and Groce, Alex},
   year      = 2008,
   booktitle = {2008 23rd IEEE/ACM International Conference on Automated Software Engineering},
-  series    = {2008 23rd IEEE/ACM International Conference on Automated Software Engineering},
   pages     = {1--6},
   doi       = {10.1109/ASE.2008.9},
-  issn      = {1938-4300}
+  issn      = {1938-4300},
+  groups    = {Swarm Verification}
 }
 @article{Holzmann2011.Swarm-Verification-Techniques,
   title   = {Swarm Verification Techniques},
@@ -79,7 +84,8 @@
   volume  = 37,
   number  = 6,
   pages   = {845--857},
-  doi     = {10.1109/TSE.2010.110}
+  doi     = {10.1109/TSE.2010.110},
+  groups  = {Swarm Verification}
 }
 @inproceedings{Holzmann2012.Paralellizing-SPIN,
   title     = {Parallelizing the Spin Model Checker},
@@ -87,11 +93,10 @@
   year      = 2012,
   booktitle = {Model Checking Software},
   publisher = {Springer Berlin Heidelberg},
-  address   = {Berlin, Heidelberg},
   pages     = {155--171},
   doi       = {10.1007/978-3-642-31759-0_12},
   isbn      = {978-3-642-31759-0},
-  editor    = {Donaldson, Alastair and Parker, David}
+  groups    = {Parallel Model Checking}
 }
 @inbook{Holzmann2018.Explicit-State-Model-Checking,
   title     = {Explicit-State Model Checking},
@@ -103,5 +108,170 @@
   pages     = {153--171},
   doi       = {10.1007/978-3-319-10575-8_5},
   isbn      = {978-3-319-10575-8},
-  editor    = {Clarke, Edmund M. and Henzinger, Thomas A. and Veith, Helmut and Bloem, Roderick}
+  groups    = {Foundations}
+}
+@inproceedings{Barnat2007,
+  title     = {Scalable Multi-core LTL Model-Checking},
+  author    = {Barnat, Jiří and Brim, Luboš and Ročkai, Petr},
+  year      = 2007,
+  booktitle = {Model Checking Software},
+  publisher = {Springer Berlin Heidelberg},
+  address   = {Berlin, Heidelberg},
+  pages     = {187--203},
+  doi       = {10.1007/978-3-540-73370-6_13},
+  isbn      = {978-3-540-73370-6}
+}
+@inproceedings{Barnat2009,
+  title     = {CUDA Accelerated LTL Model Checking},
+  author    = {Barnat, Jiří and Brim, Luboš and Češka, Milan and Lamr, Tomáš},
+  year      = 2009,
+  journal   = {2009 15th International Conference on Parallel and Distributed Systems},
+  publisher = {IEEE},
+  address   = {Shenzhen, China},
+  pages     = {34--41},
+  doi       = {10.1109/ICPADS.2009.50},
+  isbn      = {978-0-7695-3900-3},
+  issn      = {1521-9097},
+  date      = {2009-12-08/2009-12-11},
+  groups    = {Model Checking on the GPU}
+}
+@inproceedings{Cho2018,
+  title     = {FPGASwarm: High Throughput Model Checking on FPGAs},
+  author    = {Cho, Shenghsun and Ferdman, Michael and Milder, Peter},
+  year      = 2018,
+  journal   = {2018 28th International Conference on Field Programmable Logic and Applications (FPL)},
+  publisher = {IEEE},
+  address   = {Dublin, Ireland},
+  pages     = {435--4357},
+  doi       = {10.1109/FPL.2018.00080},
+  isbn      = {978-1-5386-8518-1},
+  issn      = {1946-147X},
+  date      = {2018-08-27/2018-08-31},
+  groups    = {Swarm Verification}
+}
+@inproceedings{Wijs2016,
+  title     = {GPUexplore 2.0: Unleashing GPU Explicit-State Model Checking},
+  author    = {Wijs, Anton and Neele, Thomas and Bošnački, Dragan},
+  year      = 2016,
+  booktitle = {FM 2016: Formal Methods},
+  publisher = {Springer International Publishing},
+  series    = {Lecture Notes in Computer Science},
+  volume    = 9995,
+  pages     = {694--701},
+  doi       = {10.1007/978-3-319-48989-6\_42},
+  groups    = {Model Checking on the GPU}
+}
+@inproceedings{Wijs2014,
+  title     = {GPUexplore: Many-Core On-the-Fly State Space Exploration Using GPUs},
+  author    = {Wijs, Anton and Bošnački, Dragan},
+  year      = 2014,
+  booktitle = {Tools and Algorithms for the Construction and Analysis of Systems},
+  publisher = {Springer Berlin Heidelberg},
+  series    = {Lecture Notes in Computer Science},
+  volume    = 8413,
+  pages     = {233--247},
+  doi       = {10.1007/978-3-642-54862-8\_16},
+  groups    = {Model Checking on the GPU}
+}
+@inproceedings{Edelkamp2010,
+  title     = {Efficient Explicit-State Model Checking on General Purpose Graphics Processors},
+  author    = {Edelkamp, Stefan and Sulewski, Damian},
+  year      = 2010,
+  booktitle = {Model Checking Software - 17th International SPIN Workshop, Enschede, The Netherlands, September 27-29, 2010. Proceedings},
+  publisher = {Springer Berlin Heidelberg},
+  series    = {Lecture Notes in Computer Science},
+  volume    = 6349,
+  pages     = {106--123},
+  doi       = {10.1007/978-3-642-16164-3\_8},
+  groups    = {Model Checking on the GPU}
+}
+@book{Holzmann2004,
+  title     = {The SPIN Model Checker — Primer and Reference Manual},
+  author    = {Holzmann, Gerard J.},
+  year      = 2004,
+  publisher = {Addison-Wesley},
+  isbn      = {978-0-321-22862-8},
+  groups    = {Tools}
+}
+@inproceedings{Barnat2008,
+  title     = {DiVinE Multi-Core — A Parallel LTL Model-Checker},
+  author    = {Barnat, Jiří and Brim, Luboš and Ročkai, Petr},
+  year      = 2008,
+  booktitle = {Automated Technology for Verification and Analysis},
+  publisher = {Springer Berlin Heidelberg},
+  series    = {Lecture Notes in Computer Science},
+  volume    = 5311,
+  pages     = {234--239},
+  doi       = {10.1007/978-3-540-88387-6\_20},
+  groups    = {Tools}
+}
+@online{CUDA-Programming-Guide,
+  title   = {CUDA C++ Programming Guide},
+  url     = {https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html},
+  urldate = {2021-09-23},
+  groups  = {Foundations}
+}
+@online{JenkinsHash,
+  title   = {A Hash Function for Hash Table Lookup},
+  author  = {Jenkins, Bob},
+  url     = {https://burtleburtle.net/bob/hash/doobs.html},
+  urldate = {2021-07-26}
+}
+@online{MurmurHash3,
+  title   = {MurmurHash3},
+  author  = {Appleby, Austin},
+  url     = {https://github.com/aappleby/smhasher},
+  urldate = {2021-08-31}
+}
+@inproceedings{Barnat2009.DiVinE-CUDA,
+  title     = {DiVinE-CUDA - A Tool for GPU Accelerated LTL Model Checking},
+  author    = {Barnat, Jiří and Brim, Luboš and Češka, Milan},
+  booktitle = {Proceedings 8th International Workshop on Parallel and Distributed Methods in verifiCation},
+  series    = {EPTCS},
+  volume    = 14,
+  pages     = {107--111},
+  doi       = {10.4204/EPTCS.14.8},
+  date      = {2009-11-04},
+  groups    = {Tools}
+}
+@conference{Stanton2012,
+  title     = {Streaming graph partitioning for large distributed graphs},
+  author    = {Isabelle Stanton and Gabriel Kliot},
+  day       = 12,
+  booktitle = {Proceedings of the 18th ACM SIGKDD international conference on Knowledge discovery and data mining},
+  location  = {Beijing, China},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  series    = {KDD '12},
+  pages     = {1222–1230},
+  doi       = {10.1145/2339530.2339722},
+  isbn      = 9781450314626,
+  date      = {2012-08-12},
+  groups    = {Streaming Graph Partitioning},
+  pagetotal = 9
+}
+@inproceedings{Metwally2008,
+  author    = {Metwally, Ahmed and Agrawal, Divyakant and Abbadi, Amr El},
+  title     = {Why Go Logarithmic If We Can Go Linear? Towards Effective Distinct Counting of Search Traffic},
+  year      = {2008},
+  isbn      = {9781595939265},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  doi       = {10.1145/1353343.1353418},
+  booktitle = {Proceedings of the 11th International Conference on Extending Database Technology: Advances in Database Technology},
+  pages     = {618–629},
+  numpages  = {12},
+  location  = {Nantes, France},
+  series    = {EDBT '08}
+}
+@comment{jabref-meta: databaseType:biblatex;}
+@comment{jabref-meta: grouping:
+0 AllEntriesGroup:;
+1 StaticGroup:Foundations\;0\;1\;0x8a8a8aff\;\;\;;
+1 StaticGroup:Parallel Model Checking\;0\;0\;0x8a8a8aff\;\;\;;
+1 StaticGroup:Model Checking on the GPU\;0\;0\;0x8a8a8aff\;\;\;;
+1 StaticGroup:Swarm Verification\;0\;0\;0x8a8a8aff\;\;\;;
+1 StaticGroup:Tools\;0\;1\;0x8a8a8aff\;\;\;;
+1 StaticGroup:Probabilistic Cardinality Estimation\;0\;0\;0x8a8a8aff\;\;\;;
+1 StaticGroup:Streaming Graph Partitioning\;0\;1\;0x8a8a8aff\;\;\;;
 }
