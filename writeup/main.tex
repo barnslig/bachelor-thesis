@@ -121,33 +121,46 @@ fancyheadings, % headings with seplines and logo
 \chapter{Introduction}
 
 % 1. Motivation / Topic of the research area
+Swarm verification is an approach on explicit-state model checking that tackles the state explosion problem by splitting the state space exploration into many small, independent verification tests (VTs), each covering only a subset of the state space.
+As VTs are small and independent, they can be parallelized on the GPU, resulting in high-speed model checking that can outperform the execution time of similar CPU-based approaches by multiple degrees.
+% 2. Specific Problem
+Past work has shown that low-connectivity models with only few edges between states, or large portions of the state space hidden behind bottleneck structures, can cause a swarm model checker to achieve significantly less state space coverage.
 
-In an explicit-state model checker, state space exploration of large models with billions of states is a time-consuming problem.
+% 3. Standard solutions and their limitations
 
-Using swarm verification, the problem can be split into small, independent verification tests.
-Past work has shown that by executing these verification tests in parallel on GPUs, a high-speed model checker can be implemented \cite{DeFrancisco2020.Grapple}.
-
-GPUs are interesting for model checking because they allow a significant performance increase on parallel algorithms, are widely available and relatively cheap in comparison to specialized hardware like FPGAs/ASICs.
-
-% 2. Specific problem
-
-To create the small, independent verification tests, diversification is used.
-Each verification test only covers a subset of the state space.
-Together, the verification tests nearly achieve full state space coverage.
-This approach works great on models with high connectivity.
-However, it fails when a model has only few edges between states or large portions of the state space are hidden behind bottleneck structures.
-
-Contributions:
+% 4. Outline of the new solution
+In this thesis, we provide the following contributions to swarm model checking on the GPU and the exploration of low-connectivity models:
 
 \begin{itemize}
-    \item Breakdown of the state space exploration loop using subroutines
-    \item Implementation of a Grapple model checker
-    \item A method of estimating unique states visited with a fixed error
-    \item The \emph{start over} search strategy that can reach deeper states
-    \item A visualization of Grapple BFS frontiers
+    \item A method for estimating unique states visited with a fixed error in a swarm verification.
+          This allows the observation of progress in state space coverage and giving probabilistic guarantees on models with known state space size.
+    \item A Grapple search strategy extension called \emph{start overs} that can reach deeper states by continuing the search within a VT multiple times.
+          Furthermore, the strategy allows using even smaller hash tables by compensating lost hash table capacity with additional start overs.
+    \item A visualization of unvisited and visited states in the frontiers of Grapple's breadth-first search that shows promising characteristics on a set of low-connectivity models.
+    \item An in-depth explanation of the Grapple state space exploration loop by breaking it down into subroutines.
+    \item An experimental implementation of a Grapple model checker, including a selection of models specifically implemented for on-the-fly verification on the GPU
 \end{itemize}
 
+% 5. How the solution was evaluated and what its outcomes are
+Comparison with the swarm verification waypoints benchmark has shown that our unique states visited estimation provides reliable results.
+We compared the progress in state space coverage of our start over strategy on multiple models, including the waypoints benchmark and the well-known dining philosophers problem.
+On those models, our start over strategy has shown a significant increase in state space coverage on a similar number of visited states and VTs in comparison to the default Grapple algorithm.
+
+A notable exception has been the Anderson queue lock mutual exclusion algorithm.
+Using our start over strategy, state space coverage has worsened significantly.
+Furthermore, the model has shown interesting behavior in the visualization of its BFS frontiers.
+
+% 6. Structure of the thesis
+The rest of this thesis is structured as follows:
+We start with an overview of related work in \cref{chapter:related-work}.
+A brief summary on model checking, swarm verification and the CUDA GPU programming framework is given in \cref{chapter:background}.
+The Grapple algorithm's components, swarm diversification techniques, including our start over strategy, and the unique states visited estimation are explained in \cref{chapter:theory}.
+Our concrete implementation is presented in \cref{chapter:implementation}.
+An extensive series of experiments comparing our implementation with the Grapple paper, and experiments comparing low-connectivity models with the waypoints benchmark model, is conducted in \cref{chapter:evaluation}.
+Last but not least, we conclude our results and give an outlook to additional interesting research problems arisen by this thesis in \cref{chapter:conclusion}.
+
 \chapter{Related Work}
+\label{chapter:related-work}
 
 \emph{Swarm Verification} was first studied by \citeauthor*{Holzmann2008.Swarm-Verification} as verification method for models with large state spaces on which an exhaustive verification cannot be completed in any reasonable amount of time due to the state explosion problem \cite{Holzmann2008.Swarm-Verification}.
 It was first used as an extension to the SPIN model checker.
@@ -203,6 +216,7 @@ An interesting approach in terms of on-the-fly verification are the streaming gr
 A main difference to diversification in swarm verification is that states are distributed onto their partitions as they arrive, which, in a naive implementation, would require the search for violations to be conducted as separate step after partitioning.
 
 \chapter{Background}
+\label{chapter:background}
 
 This chapter gives a brief summary on the main topics that this thesis is based on.
 First, we define the scope of model checking that we are looking at in \cref{section:background:model-checking}.
@@ -598,7 +612,7 @@ The hash table supports one operation that marks a state as visited and returns 
 
 %% How do the bit state hash table work and how can we control the collisions?
 
-\subsection{Properties of the algorithm}
+\subsection{Properties of the Algorithm}
 \label{section:theory:grapple-properties}
 
 % TODO Validity: For which inputs does the algorithm work?
@@ -765,12 +779,14 @@ For example, 24 discovered waypoints means that approximately \SI{24}{\percent} 
     \caption{Waypoints model}
     \label{alg:waypoints-model}
     \begin{algorithmic}
+        \State $P \gets 8$
+        \State $\mathit{NDC} \gets 4$
         \State $violations \gets \left\{\text{100 random 32-bit integers}\right\}$
 
         \Statex
 
         \Function{$\sSuccessor$}{$state$, $p$, $ndc$}
-        \State \Return $state \bitwiseOr 1 << ((4 \cdot process) + ndc)$
+        \State \Return $state \bitwiseOr 1 << ((4 \cdot p) + ndc)$
         \EndFunction
 
         \Statex
@@ -818,6 +834,7 @@ To calculate the state space coverage in percent, we furthermore have to know th
 As estimating the state space size of unknown models is out of scope of this thesis, we can only calculate coverage of models with known state space size.
 
 \chapter{Implementation}
+\label{chapter:implementation}
 
 % What is the goal of our implementation?
 Our implementation serves two purposes:
@@ -829,7 +846,7 @@ This chapter documents our implementation of a Grapple model checker.
 The general architecture of the model checker is described in \cref{section:implementation:source-code}.
 Usage instructions are described in \cref{section:implementation:usage}.
 
-\section{Source code}
+\section{Source Code}
 \label{section:implementation:source-code}
 
 % What programming language, build tools, frameworks, ... are used?
@@ -1067,6 +1084,7 @@ To verify a model using our model checker, a user has to complete the following 
 \end{enumerate}
 
 \chapter{Evaluation}
+\label{chapter:evaluation}
 
 % This chapter presents empirical experimental results of our implementation.
 This chapter presents our series of empirical experiments conducted on our implementation.
@@ -1428,6 +1446,7 @@ In conclusion, the experiment has shown that start overs can actually improve ex
 \end{figure}
 
 \chapter{Conclusion}
+\label{chapter:conclusion}
 
 \section{Future Work}
 
