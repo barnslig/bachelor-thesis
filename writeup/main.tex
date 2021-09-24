@@ -157,7 +157,7 @@ A brief summary on model checking, swarm verification and the CUDA GPU programmi
 The Grapple algorithm's components, swarm diversification techniques, including our start over strategy, and the unique states visited estimation are explained in \cref{chapter:theory}.
 Our concrete implementation is presented in \cref{chapter:implementation}.
 An extensive series of experiments comparing our implementation with the Grapple paper, and experiments comparing low-connectivity models with the waypoints benchmark model, is conducted in \cref{chapter:evaluation}.
-Last but not least, we conclude our results and give an outlook to additional interesting research problems arisen by this thesis in \cref{chapter:conclusion}.
+Last but not least, we conclude our results and give an outlook to additional interesting research problems arisen by this thesis in \cref{chapter:conclusions}.
 
 \chapter{Related Work}
 \label{chapter:related-work}
@@ -1122,6 +1122,7 @@ To further investigate differences between the implementations, we conducted add
 \end{figure}
 
 \subsection{Comparison of Waypoints and HLL as Estimators of State Space Coverage}
+\label{section:evaluation:waypoints-vs-hll}
 
 As explained in \cref{section:theory:waypoints-model}, counting waypoints is a method for estimating the achieved state space coverage.
 To make sure that the discovered waypoints of our implementation correctly indicate the state space coverage, we compared them to the state space coverage estimation of the HyperLogLog introduced in \cref{section:theory:counting-unique-states-visited}.
@@ -1288,6 +1289,7 @@ This confirmed our hypothesis of a significant slow-down for this particular mod
 \end{table}
 
 \subsection{Comparison of Unique States Visited, Total States Visited and State Space Coverage}
+\label{section:evaluation:low-connectivity-comparison}
 
 In the paper, the models yielded very different results concerning the unique and total states visited.
 Thus, the next experiment compares these performance indicators for our set of models on a fixed amount of \num{125000} VTs.
@@ -1315,6 +1317,7 @@ In conclusion, the performance deficiency of the three presented low-connectivit
 \end{table}
 
 \subsection{BFS Frontiers of Low-Connectivity Models}
+\label{section:evaluation:low-connectivity-bfs-frontiers}
 
 The algorithm introduced in \cref{section:theory:grapple-model-checker} is operating in alternating phases that produce so-called \emph{frontiers}.
 Each frontier is an intermediate state of the BFS, representing the deepest states found until now.
@@ -1411,6 +1414,7 @@ Furthermore, the relative representation on the right showed a near constant amo
 % \FloatBarrier
 
 \subsection{Start Over Strategy on Low-Connectivity Models}
+\label{section:evaluation:low-connectivity-start-overs}
 
 Our last experiment evaluates whether the start over strategy yields the same performance benefit shown in \cref{section:evaluation:start-overs} on low-connectivity models.
 For each of our three low-connectivity models, we conducted two explorations of 500 runs à 250 VTs.
@@ -1445,23 +1449,59 @@ In conclusion, the experiment has shown that start overs can actually improve ex
     \label{fig:evaluation:EXP-13}
 \end{figure}
 
-\chapter{Conclusion}
-\label{chapter:conclusion}
+\chapter{Conclusions}
+\label{chapter:conclusions}
 
-\section{Future Work}
-
-\begin{itemize}
-    \item Estimate state space size for models of unknown size
-    \item Automatically determine the optimal number of start overs
-    \item Implement usage of multiple GPU devices through CUDA streaming API
-    \item Analyze State Space Diversification, i.e. "how good is a partition?"
-\end{itemize}
+The final chapter of this thesis starts with a discussion of our work in \cref{section:conclusions:discussion} and finishes with an outlook for future work on swarm verification in \cref{section:conclusions:future-work}.
 
 \section{Discussion}
+\label{section:conclusions:discussion}
 
-\begin{itemize}
-    \item As in the evaluation: The Anderson model draws special interest: Its BFS frontiers show a unique behavior and using the start over strategy, it performs contrary to all other models.
-\end{itemize}
+% Short summary of our results / Concise statement of important results and an explanation of their significance
+We successfully implemented a Grapple swarm model checker, as presented in \cref{chapter:implementation}, and extended its state space exploration with a promising strategy called \emph{start overs} to reach deeper states in \cref{section:theory:start-overs}.
+Our experiments in \cref{section:evaluation:start-overs} and \cref{section:evaluation:low-connectivity-start-overs} have shown that a deeper state space exploration can result in an improved state space coverage on a similar number of total states visited.
+
+We introduced and implemented a method for estimating unique states visited in a swarm verification with a fixed error in \cref{section:theory:counting-unique-states-visited}.
+Estimating unique states visited allows monitoring the progress in state space coverage of a swarm verification, even if due to the state explosion problem exact counting is impossible, as shown in \cref{section:evaluation:waypoints-vs-hll}.
+
+Our experiments on low-connectivity models in \cref{section:evaluation:low-connectivity-model-evaluation} have shown promising characteristics that potentially could be used to identify low-connectivity models.
+The most promising experiment has been the visualization of BFS frontiers in \cref{section:evaluation:low-connectivity-bfs-frontiers}, as it allowed comparing the internal progress in a VT between models.
+
+The Anderson model has been a notable exception in our experiments on low-connectivity models:
+Its exploration resulted in the lowest total states visited among all analyzed models, as shown in \cref{section:evaluation:low-connectivity-comparison}.
+The visualization of its BFS frontiers in \cref{section:evaluation:low-connectivity-bfs-frontiers} contradicted our intuition by having a near constant amount of new states visited throughout its BFS frontiers.
+And finally, the start over strategy, in contrast to all other models in our experiments, performed worse on the Anderson model, as shown in \cref{section:evaluation:low-connectivity-start-overs}.
+
+Being in line with past work, this thesis has shown that swarm verification on the GPU is a promising approach for verification of very large state spaces in a short time using widely available, affordable consumer hardware.
+
+The source code of our implementation of a Grapple swarm model checker and the corresponding experiment series are freely available on GitHub\footnote{\url{https://github.com/barnslig/bachelor-thesis}}, allowing future work on swarm verification to continue on our efforts.
+
+\section{Future Work}
+\label{section:conclusions:future-work}
+
+While working on this thesis, multiple ideas for future work on swarm verification came up.
+We present two ideas continuing the work on estimation of state space coverage, an idea that could further increase the performance benefit of start overs, and a small idea for comparing state space diversification techniques.
+
+\paragraph{Estimate the state space size of models with unknown size}
+To calculate the coverage of a swarm, both the total state space size and the unique states visited are required.
+The unique states visited can be estimated using our approach presented in \cref{section:theory:counting-unique-states-visited}.
+The total state space size however is often an unknown figure, unlike for some models used in our evaluation, for which the absolute size is known.
+Following that the total state space size is often unknown, finding a method of estimating it is a beneficial extension to swarm verification, as it would allow to estimate the swarm coverage on arbitrary models.
+
+\paragraph{Detecting when exhaustive coverage is achieved}
+Having an estimation of unique states visited and the total state space size of a model, we can estimate the progress in state space coverage of a swarm verification.
+Intuitively, knowing the progress in state space coverage would allow termination of the swarm when \SI{100}{\percent} state space coverage is achieved.
+However, due to the inaccuracy of estimating unique states visited, we cannot simply terminate the search the first time the estimation achieves \SI{100}{\percent}, without possibly leaving a small portion of the state space unvisited.
+An interesting future contribution could be thus a strategy of terminating the swarm when full state space coverage is achieved with, for example, \SI{99}{\percent} probability.
+
+\paragraph{Determining the optimal number of start overs}
+To keep the state space exploration terminating, our start over strategy that we introduced in \cref{section:theory:start-overs} requires providing the number of start overs.
+In \cref{section:evaluation:start-overs}, we only evaluated the strategy using a fixed amount of start overs to mitigate smaller hash tables.
+Looking further, finding an amount of start overs for a model that provides a good trade off between a faster state space coverage growth and enlarged VTs, which would worsen parallelization and execution time, is an interesting problem for future contributions.
+
+\paragraph{Analyzing state space diversification}
+In an ideal swarm verification, there would be no overlap between VTs, resulting in optimal parallelization of the verification.
+Due to the probabilistic approach of diversification techniques introduced in \cref{section:theory:diversification-techniques}, finding a metric for state space overlap between VTs could be an interesting opportunity to compare diversification techniques.
 
 % \appendix
 
