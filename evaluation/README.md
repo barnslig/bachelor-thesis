@@ -2,9 +2,14 @@
 
 This folder contains protocols and raw data of our series of experiments.
 
-Our experiments serve two goals:
-First, to empirically evaluate our implementation and compare it to the paper.
-Then, to empirically observe key difference of low-connectivity state space exploration.
+The first series of experiments empirically evaluates the correctness of our implementation and compares our implementation it to the paper.
+The second series tries to empirically observe key difference of low-connectivity state space exploration.
+
+The folder structure is as follows:
+
+- [`data/`](./data/) contains raw data of the experiments.
+- [`assets/`](./assets/) contains external assets, for example, a screenshotted plot from the Grapple paper.
+- [`output-assets/`](./output-assets/) contains the PDFs of all plots and is used by the writeup.
 
 ## General evaluation of the implementation and comparison with the paper
 
@@ -21,6 +26,7 @@ Then, to empirically observe key difference of low-connectivity state space expl
 - [EXP-12 Comparing Models by Percentage of VTs Finding a Violation, Unique States Visited, Total States Visited, and State Space Coverage](EXP-12-model-comparison.ipynb)
 - [EXP-13 Comparing the Start Over Strategy on Low-Connectivity Models](EXP-13-start-overs-low-connectivity.ipynb)
 
-### TODO
+## Jupyter Environment
 
-- EXP-14 Exploring DP/Anderson/Peterson using Depth-Limited process-PDS
+The experiments are evaluated in a [VSCode development container](https://code.visualstudio.com/docs/remote/create-dev-container) using [VSCode Jupyter Notebooks](https://code.visualstudio.com/docs/datascience/jupyter-notebooks).
+They should, however, work in any miniconda environment.
