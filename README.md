@@ -6,9 +6,9 @@ This repository contains the source of my bachelor's thesis.
 
 ## Folder structure
 
-- [writeup/](./writeup/) The LaTeX source of the writeup and intermediate presentation
-- [implementation/](./implementation/) The source code of our Grapple model checker implementation
-- [evaluation/](./evaluation/) Protocols and raw data of our experiments
+- [`implementation/`](./implementation/) The source code of our Grapple model checker implementation
+- [`evaluation/`](./evaluation/) Protocols and raw data of our experiments
+- [`writeup/`](./writeup/) The LaTeX source of the writeup and intermediate presentation
 
 ## Abstract
 
@@ -21,4 +21,4 @@ Our experiments on low-connectivity models shows promising characteristics that 
 
 ## License
 
-See [LICENSE](./LICENSE).
+See [LICENSE](./LICENSE)
