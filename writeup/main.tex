@@ -102,7 +102,7 @@ fancyheadings, % headings with seplines and logo
     In this thesis, we provide an implementation of a Grapple model checker, a method for estimating unique states visited, an extension to the default Grapple search strategy called \emph{start overs} that can reach deeper states, and a visualization technique for breadth-first search frontiers.
     % 5. How the solution was evaluated and what its outcomes are
     Our experimental results show that our start over strategy can achieve a significant increase in state space coverage.
-    Our series of experiment on low-connectivity models shows promising characteristics that can potentially be used to identify low-connectivity models.
+    Our experiments on low-connectivity models shows promising characteristics that can potentially be used to identify low-connectivity models.
 \end{quotation}
 
 \tableofcontents
@@ -115,7 +115,7 @@ fancyheadings, % headings with seplines and logo
 \chapter{Introduction}
 
 % 1. Motivation / Topic of the research area
-Swarm verification is an approach on explicit-state model checking that tackles the state explosion problem by splitting the state space exploration into many small, independent verification tests (VTs), each covering only a subset of the state space.
+Swarm verification is an explicit-state model checking approach that tackles the state explosion problem by splitting the state space exploration into many small, independent verification tests (VTs), each covering only a subset of the state space.
 As VTs are small and independent, they can be parallelized on the GPU, resulting in high-speed model checking that can outperform the execution time of similar CPU-based approaches by multiple degrees.
 % 2. Specific Problem
 Past work has shown that low-connectivity models with only few edges between states, or large portions of the state space hidden behind bottleneck structures, can cause a swarm model checker to achieve significantly less state space coverage.
@@ -168,8 +168,9 @@ Our implementation tries to stay as close as possible to theirs, with three note
 
 \begin{itemize}
     \item Our hash tables are smaller, as our implementation of bitstate hashing cannot address the full \SI{48}{\kibi\byte} of shared memory due to a simplified calculation of bucket and element using bit shifts instead of arithmetic operations.
-    \item To estimate unique states visited, we use a HyperLogLog++ instead of accurate counting using a global hash table.
-    \item To go deeper in a state space exploration, we extend the algorithm by a self-contained strategy named \emph{start overs} that is applied directly on-device within the GPU kernel, instead of the scatter-PDS approach used in Grapple where continuation of a search is controlled by the host.
+    \item We use a probabilistic cardinality estimator, so we can estimate unique states visited on models with billions of states.
+          The Grapple paper is using a global hash table for counting, which would quickly exceed memory on large models.
+    \item To go deeper in a state space exploration, we extend the algorithm by a self-contained strategy named \emph{start overs} that is applied directly on-device within the GPU kernel.
 \end{itemize}
 
 A key difference between Grapple and the SPIN swarm verification is the highly constrained hash table size in Grapple, which stores its hash tables in CUDA's \SI{48}{\kibi\byte} of shared memory.
@@ -183,9 +184,9 @@ Both approaches share using a parallel breadth-first search (BFS) and support ve
 However, the SPIN approach only supports a sub-class of liveness properties that can be reduced into safety properties called \emph{bounded liveness} \cite{Holzmann2012.Paralellizing-SPIN}.
 The Grapple framework is re-using the parallel BFS from the SPIN-approach for parallelization within VTs, which we are explaining in-depth in \cref{section:theory:queues} and \cref{section:implementation:queues}.
 
-In \cite{Bartocci2014.GPGPU-Parallel-SPIN}, the authors of the Grapple framework lay its foundations by extending the SPIN model checker to run its parallel BFS state space exploration \cite{Holzmann2012.Paralellizing-SPIN} on the GPU using CUDA.
-Most notably, they already use on-the-fly successor generation on the GPU.
-For that, they introduce an algorithm that allows successors to be generated without branching through \texttt{if}-/\texttt{else}-/\texttt{switch}-conditions, which we are explaining in-depth in \cref{section:theory:model-definition} and \cref{section:implementation:successor-generation}.
+The foundations of the Grapple framework originate from an extension to the SPIN model checker that runs its parallel BFS state space exploration \cite{Holzmann2012.Paralellizing-SPIN} on the GPU using CUDA \cite{Bartocci2014.GPGPU-Parallel-SPIN}.
+Most notably, the extension is already generating successors on-the-fly on the GPU.
+For that, it introduces an algorithm that allows successors to be generated without branching through \texttt{if}-/\texttt{else}-/\texttt{switch}-conditions, which we are explaining in-depth in \cref{section:theory:model-definition} and \cref{section:implementation:successor-generation}.
 The leading differences to the Grapple framework are that they perform an exhaustive verification and that synchronization of threads is done using a custom \emph{fast-barrier synchronization} instead of using native CUDA \texttt{\_\_syncthreads()}.
 
 Another approach to model checking on the GPU is performed by DiVinE-CUDA \cite{Barnat2009.DiVinE-CUDA}.
@@ -890,8 +891,8 @@ After each run, the main program collects the discovered violations and number o
 The queues provide a data structure for lock-free communication between threads in a VT, as described in \cref{section:theory:queues}.
 By default, each queue has a capacity of $I=4$ states.
 They are only used on-device within the CUDA kernel and stored in global memory due to the limited size of shared memory.
-Resulting from this, we have to map $K \times 2 \times N \times N \times I$ queues into memory.
-This proposes two challenges:
+To store the queues in global memory, we extend the amount of the queues by the amount $K$ of VTs in a CUDA kernel, resulting in $K \times 2 \times N \times N$ queues in total.
+The multidimensional structure of the queues proposes two challenges:
 
 \begin{enumerate}
     \item We have to implement fixed-capacity queues.
@@ -1012,7 +1013,7 @@ Our hash tables can store $2^{18}=\num{262144}$ states, taking up \num{32768} by
 % How does bitstate hashing work?
 In bitstate hashing, a single bit represents whether a state is visited.
 Per clock cycle, CUDA can transmit 32 bit of shared memory, which is stored in 32-bit words.
-Resulting from this, we use a bucket size of 32 bit.
+To achieve optimal utilization of memory transfers, we use a bucket size of 32 bit.
 The bit representing whether a state is visited is then computed using \cref{alg:bitstate-hashing}.
 
 % How can we control collisions?
@@ -1141,7 +1142,6 @@ The following macros, each listed with purpose and default value, are available:
 
     \item \texttt{GRAPPLE\_MODEL} \\
           The model that is going to be verified.
-          See \cref{section:implementation:available-models} for a list of available models.
           Default: \texttt{WaypointsState}.
 
     \item \texttt{GRAPPLE\_INSPECT\_BFS} \\
@@ -1211,7 +1211,7 @@ Each output line contains the following values, separated by commas:
 
 % This chapter presents empirical experimental results of our implementation.
 This chapter presents our series of empirical experiments conducted on our implementation.
-It starts with experiments on the correctness of our implementation and a comparison with the Grapple paper's results in \cref{section:evaluation:correctness-comparison-with-paper}.
+It starts with experiments on the correctness of our implementation and a comparison with results from the Grapple paper \cite{DeFrancisco2020.Grapple} in \cref{section:evaluation:correctness-comparison-with-paper}.
 We then continue with a series of experiments that compare the Waypoints model, which is known to be high-connectivity, with three low-connectivity models in \cref{section:evaluation:low-connectivity-model-evaluation}.
 
 All experiments are performed on an NVIDIA GeForce RTX 2080 Ti GPU, AMD Ryzen Threadripper 2990WX CPU and \SI{128}{\giga\byte} main memory using Ubuntu 20.04.2 LTS.
@@ -1225,7 +1225,7 @@ We start the evaluation with whether our implementation reaches the same number 
 We would expect both implementation to behave similarly, discovering at least 80 waypoints in \num{20000} VTs and all 100 waypoints in about \num{100000} VTs, as shown in \cref{fig:evaluation:EXP-00:1}.
 However, that is clearly not the case, as presented in \cref{fig:evaluation:EXP-00:2}.
 Our implementation found significantly fewer waypoints, even though the amount of VTs was 2.5x larger.
-To further investigate differences between the implementations, we conducted additional experiments.
+To further investigate potential reasons for the weak performance of our implementation, we conducted additional experiments.
 
 \begin{figure}
     \begin{subfigure}[b]{.5\textwidth}
