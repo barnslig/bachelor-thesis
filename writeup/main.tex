@@ -862,12 +862,12 @@ Code is written using the Object-Oriented Programming paradigm.
 Our implementation consists of six components:
 
 \begin{itemize}
-    \item The main program, running the CUDA kernels and collecting their results.
-    \item The CUDA kernel, implementing a parallel state space exploration loop.
+    \item The main program, running the CUDA kernels that implement the parallel state space exploration loop, and collecting their results.
     \item The queues, providing lock-free communication between threads in a VT.
     \item The hash tables in which states are marked as visited.
     \item The model, providing successor generation and violation checking.
-    \item The HyperLogLog, counting unique states visited across all VTs.
+    \item The HyperLogLog++, counting unique states visited across all VTs.
+    \item The output buffer, transferring discovered violations from the CUDA kernels back to the host.
 \end{itemize}
 
 % TODO visualize the architecture
@@ -878,20 +878,16 @@ In the following, we are going to describe the implementation-specific details a
 
 % What does the main program do?
 The main program runs in a single thread on the host.
-On startup, it seeds a global pseudorandom number generator (PRNG) and creates a random value for each CUDA thread.
-Then, for each run, it executes the CUDA kernel in a grid of $K=250$ blocks, each consisting of $N=32$ threads.
+On startup, it seeds a global pseudorandom number generator (PRNG) and creates random values for each CUDA thread.
+Using the random values, each VT can create different hash collisions, as explained in \cref{section:theory:hash-table}.
+Then, for each run, the main program executes the CUDA kernel in a grid of $K=250$ blocks, each consisting of $N=32$ threads.
+% What does the Grapple CUDA kernel do?
+The CUDA kernel executes the state space exploration loop, as described in \cref{section:theory:grapple-model-checker}.
 % How is the algorithm mapped onto the CUDA architecture?
 Each block represents a VT, meaning that VTs are executed in batches of 250.
 Each thread represents a worker of a VT's parallel state space exploration.
 % How do we post-process output data of the kernels?
-After each run, the main program collects the discovered violations and number of unique states visited, accumulates them and prints them to the standard output line-by-line as CSV.
-
-\subsection{CUDA Kernel}
-
-% What does the Grapple CUDA kernel do?
-The CUDA kernel executes the state space exploration loop, as described in \cref{section:theory:grapple-model-checker}.
-
-%% How can the variations (PDS, process-PDS, scatter-PDS, ...) be implemented?
+After each run, the main program collects the discovered violations and number of unique states visited from all VTs, accumulates them and prints them to the standard output line-by-line as CSV.
 
 \subsection{Queues}
 \label{section:implementation:queues}
@@ -922,7 +918,7 @@ The memory address of thread $i$'s input queue, which is an output queue of thre
 \[v \cdot (2 \cdot N \cdot N) + t \cdot (N \cdot N) + j \cdot N + i\]
 
 \cref{fig:4d-mapped-memory} illustrates the mapping of a single example VT with $K=1$ and $N=4$, meaning that we allocate memory for $1 \times 2 \times 4 \times 4 = 32$ queues.
-On the top row, each slot represents the memory allocation of a single queue.
+In the top row, each slot represents the memory allocation of a single queue.
 The remaining rows illustrate the constants enclosed in parentheses in our formula:
 Each set of output queues has a width of $N$, which we have to multiply with the index of the current thread to get at its first memory slot.
 Each phase has a width of $(N \cdot N)$, which we have to multiply with the index of the current phase.
@@ -949,7 +945,7 @@ State generation is usually heavily based on branching through \texttt{switch}- 
 However, CUDA's SIMT execution model, in which warps of 32 threads operate on same instruction, causes threads to pause when their execution paths diverge.
 This means that state generation through branching results in a slower CUDA execution.
 As a countermeasure, \citeauthor*{Bartocci2014.GPGPU-Parallel-SPIN} propose to calculate all possible state transitions every time, preserving the SIMT execution and at the same time creating different states in each thread \cite[Algorithm 3]{Bartocci2014.GPGPU-Parallel-SPIN}.
-To do so, it makes use of the custom ternary operator described in \cref{alg:branching-free-ternary-operator} that exploits the fact that boolean values evaluate to either zero or one.
+To do so, they make use of the custom ternary operator described in \cref{alg:branching-free-ternary-operator} that exploits the fact that boolean values evaluate to either zero or one.
 
 A key difference of our implementation is that we do not fit a state's variables into a single integer using bit shifts.
 Instead, we use regular C++ class data members.
@@ -1067,24 +1063,153 @@ The rate of collisions can then be controlled by the hash table's size.
 
 \subsection{HyperLogLog++}
 
-The HyperLogLog (HLL) provides an algorithm for distributed counting of distinct elements, as described in \cref{section:theory:counting-unique-states-visited}.
-In our implementation, the grid of VTs of each run is operating on a single HLL that is stored in global memory.
+The HyperLogLog++ (HLL) provides an algorithm for distributed counting of distinct elements.
+Other than described in \cref{section:theory:counting-unique-states-visited}, in our implementation, each CUDA grid, consisting of multiple VTs, is sharing a single HLL that is stored in global memory, so we only have to copy a single data structure from device to host.
 Visited states are added to the HLL only on-device.
-The host collects the HLLs after the kernels have finished, merge them into one big HLL and does the estimation of unique states visited.
+The host collects the HLLs after the kernels have finished, merges them into one big HLL and does the estimation of unique states visited.
 Merging and estimating the amount of unique states visited is done only on the host.
+
+\subsection{Output Buffer}
+\label{section:implementation:output-buffer}
+
+Each VT can discover an unpredictable amount of violations.
+In the worst case, each state visited by a VT violates.
+% As paths leading to a violation are not continued, the maximum is in practice much lower.
+To transfer an unknown amount of violating states from device to host, so they can be reported to the user, we use a fixed-capacity FIFO buffer that drops new entries when full.
+The buffer is stored in global memory and shared between all VTs executed in a CUDA kernel.
+
+The FIFO buffer is implemented using a fixed-capacity array that holds the elements, and two integers with indices to the buffer's \texttt{head} and \texttt{tail}.
+Other than the queues described in \cref{section:implementation:queues}, we use array indices instead of pointers for \texttt{head} and \texttt{tail}, so the buffer can be copied from device to host without rewriting pointers from device to host memory.
+On \texttt{push}, the violating state is written into the elements array at the index of the \texttt{tail}, which is then incremented by one, until the buffer is full.
+The buffer can be considered full when \texttt{tail} equals the capacity.
+On \texttt{pop}, a pointer to the violating state at the position of the \texttt{head} is returned, and the \texttt{head} gets incremented by one, until the buffer is empty.
+The buffer can be considered empty when \texttt{head} equals \texttt{tail}.
+
+This design of the buffer requires it to be used in two phases that cannot be mixed:
+In the first phase within the CUDA kernel, the buffer is filled with elements using the \texttt{push} operation.
+In the second phase after the CUDA kernel is finished, the buffer is copied to the host and emptied there using the \texttt{pop} operation.
+To reuse a buffer, we have to \texttt{memset} its memory to 0.
 
 \section{Usage}
 \label{section:implementation:usage}
 
-To verify a model using our model checker, a user has to complete the following steps:
+This section provides a user guide for our Grapple model checker.
+We start with a description of the workflow from model specification to output interpretation in \cref{section:implementation:model-checking-workflow}.
+We continue with the build configuration in \cref{section:implementation:build-configuration} and a list of command line options that can modify the runtime behavior of the model checker in \cref{section:implementation:cli-options}.
+Finally, we explain how to interpret the model checker's output in \cref{section:implementation:output-interpretation}.
+
+\subsection{Model Checking Workflow}
+\label{section:implementation:model-checking-workflow}
+
+To verify a model using our model checker, a user has to complete the following workflow:
 
 \begin{enumerate}
-    \item Describe their model in a C++ class using \cref{alg:on-the-fly-state-generation-on-the-gpu}
-    \item Compile our model checker including their model
-    \item Execute the single output binary.
-          On execution, the user may set the PRNG seed and number of runs using command-line options.
-          The number of runs needed to achieve a certain state space coverage needs to be evaluated experimentally.
-    \item Interpret the CSV output
+    \item Describe their model in a C++ class using \cref{alg:on-the-fly-state-generation-on-the-gpu},
+    \item Configure the build to include their model using the text macros explained in \cref{section:implementation:build-configuration}.
+    \item Compile the model checker using CMake.
+    \item Execute the compiled binary, with optional command line options specified in \cref{section:implementation:cli-options}.
+    \item Interpret the CSV output, as explained in \cref{section:implementation:output-interpretation}.
+\end{enumerate}
+
+% ho
+
+\subsection{Build Configuration}
+\label{section:implementation:build-configuration}
+
+In our implementation, the parameters of the Grapple algorithm and the verified model can be changed by overriding text macros.
+Text macros can be overridden by supplying command line options to the Nvidia CUDA Compiler \texttt{nvcc}, for example \mbox{\texttt{-DGRAPPLE\_MODEL=PhilosophersStateV2}}.
+The following macros, each listed with purpose and default value, are available:
+
+\begin{itemize}
+    \item \texttt{GRAPPLE\_VTS} \\
+          The number of VTs in a CUDA grid.
+          Default: 250.
+
+    \item \texttt{GRAPPLE\_N} \\
+          The number of threads in a VT.
+          Default: 32.
+
+    \item \texttt{GRAPPLE\_I} \\
+          The number of queue slots.
+          Default: 4.
+
+    \item \texttt{GRAPPLE\_SO} \\
+          The number of start overs.
+          Default: 0.
+
+    \item \texttt{GRAPPLE\_HT} \\
+          The hash table capacity, as a power of two.
+          Default: 18.
+
+    \item \texttt{GRAPPLE\_HLL} \\
+          The number of the HyperLogLog++ registers, as a power of two.
+          Default: 14.
+
+    \item \texttt{GRAPPLE\_MODEL} \\
+          The model that is going to be verified.
+          See \cref{section:implementation:available-models} for a list of available models.
+          Default: \texttt{WaypointsState}.
+
+    \item \texttt{GRAPPLE\_INSPECT\_BFS} \\
+          This macro enables the implementation of the experiment explained in \cref{section:evaluation:low-connectivity-bfs-frontiers}.
+          When set, the visited and failed states of a single VT's BFS frontiers are returned instead of model progress and violations.
+          By activating this macro, \texttt{GRAPPLE\_VTS} is automatically set to 1.
+          Default: false.
+\end{itemize}
+
+\subsection{Command Line Options}
+\label{section:implementation:cli-options}
+
+The compiled binary provides the following command line options to modify its runtime behavior:
+
+\begin{itemize}
+    \item \texttt{-s <seed>} \\
+          Specifies the seed of the PRNG that is used to generate all random numbers used in state space diversification.
+          By specifying this option, reproducible results can be achieved.
+          Default: Use a random seed.
+
+    \item \texttt{-n <runs>} \\
+          Specifies the amount of Grapple runs, where each run consists of \texttt{GRAPPLE\_VTS} VTs.
+          The amount of runs needed to achieve a certain state space coverage needs to be evaluated experimentally.
+          Default: 200.
+
+    \item \texttt{-q} \\
+          When specified, no violations are printed out.
+          This option can be used to only observe the state space coverage on a model, which is useful when otherwise too many violations are found.
+          Default: Print all violations found.
+\end{itemize}
+
+\subsection{Output Interpretation}
+\label{section:implementation:output-interpretation}
+
+During execution of the binary, the model checker continuously reports its progress line by line to the standard output.
+After each run, an output line containing the progress and an additional output line for every violation found in the run are created.
+The output is compatible with parsers for the comma-separated values (CSV) file format.
+Each output line contains the following values, separated by commas:
+
+\begin{enumerate}
+    \item \texttt{run} \\
+          The zero-based index of the run that created this output line.
+    \item \texttt{block} \\
+          Only on violations:
+          The CUDA block that discovered the violation.
+    \item \texttt{thread} \\
+          Only on violations:
+          The CUDA thread that discovered the violation.
+    \item \texttt{state} \\
+          Only on violations:
+          The text representation of the violating state.
+    \item \texttt{uniques} \\
+          The amount of unique violations discovered across all VTs.
+    \item \texttt{visited} \\
+          The amount of unique states visited across all VTs.
+    \item \texttt{visited\_percent} \\
+          The state space coverage, as floating point value in percent.
+          Only available on models with known total state space size.
+    \item \texttt{vts} \\
+          The amount of VTs executed until creation of the output line.
+    \item \texttt{total\_visited} \\
+          The amount of total states visited across all VTs.
 \end{enumerate}
 
 \chapter{Evaluation}
@@ -1096,6 +1221,7 @@ It starts with experiments on the correctness of our implementation and a compar
 We then continue with a series of experiments that compare the Waypoints model, which is known to be high-connectivity, with three low-connectivity models in \cref{section:evaluation:low-connectivity-model-evaluation}.
 
 All experiments are performed on an NVIDIA GeForce RTX 2080 Ti GPU, AMD Ryzen Threadripper 2990WX CPU and \SI{128}{\giga\byte} main memory using Ubuntu 20.04.2 LTS.
+The seed of the PRNG in each experiment is \texttt{-s 1736331306}.
 All values related to state space coverage are estimated using a HLL with $2^{14}$ registers and thus prone to an error, as explained in \cref{section:theory:counting-unique-states-visited}.
 
 \section{Correctness and Comparison with the Paper}
