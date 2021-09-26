@@ -33,7 +33,6 @@ fancyheadings, % headings with seplines and logo
 \usepackage{mathtools}
 \usepackage{microtype}
 \usepackage[binary-units]{siunitx}
-% \usepackage[section]{placeins}
 \usepackage{subcaption}
 \usepackage{tikz}
 \usepackage{hyperref}
@@ -533,7 +532,7 @@ Having the successor generation and parallel breadth-first search ready, we can 
 Finally, we take a look at properties of the algorithm, including termination, in \cref{section:theory:grapple-properties}.
 
 \begin{algorithm}[!b]
-    \caption{Grapple state space exploration loop of a single worker}
+    \caption{Grapple State Space Exploration Loop of a Single Worker}
     \label{alg:grapple-state-space-exploration}
     \begin{algorithmic}
         \State $t \in \left\{0, 1\right\} \gets 0$
@@ -776,7 +775,7 @@ As the waypoints are uniformly distributed, the number of unique discovered wayp
 For example, 24 discovered waypoints means that approximately \SI{24}{\percent} of the state space is covered.
 
 \begin{algorithm}
-    \caption{Waypoints model}
+    \caption{Waypoints Model}
     \label{alg:waypoints-model}
     \begin{algorithmic}
         \State $P \gets 8$
@@ -1026,7 +1025,7 @@ To achieve that in every VT different states cause a collision, each is includin
 The rate of collisions can then be controlled by the hash table's size.
 
 \begin{algorithm}
-    \caption{Bitstate hashing}
+    \caption{Bitstate Hashing}
     \label{alg:bitstate-hashing}
     \begin{algorithmic}
         \LComment{Initialize hash table buckets. Here, $N$ is the hash table size}
@@ -1281,7 +1280,7 @@ Both implementations share a queue size of $32 \times 32 \times 4$.
 Beside of that, we identified two key differences of our implementation:
 
 \begin{itemize}
-    \item Our hash tables are \SI{33}{\percent} smaller than in the paper.
+    \item Our hash tables are \SI{33}{\percent} smaller.
           This is due to our bit shift implementation presented in \cref{section:implementation:hash-tables} which cannot address the full \SI{48}{\kibi\byte} of shared memory.
     \item We batch VTs in a CUDA kernel, each executing 250 at once.
           In the paper, there seems to be only a single VT per CUDA kernel.
@@ -1534,8 +1533,6 @@ Furthermore, the relative representation on the right showed a near constant amo
     \caption{BFS frontier visualization of low-connectivity models}
     \label{fig:evaluation:EXP-11-2}
 \end{figure}
-
-% \FloatBarrier
 
 \subsection{Start Over Strategy on Low-Connectivity Models}
 \label{section:evaluation:low-connectivity-start-overs}
