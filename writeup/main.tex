@@ -94,21 +94,16 @@ fancyheadings, % headings with seplines and logo
 \chapter*{\centering \begin{normalsize}Abstract\end{normalsize}}
 \begin{quotation}
     % 1. Motivation / Topic of the research area
-    Using small, independent verification tests, model checking large models with billions of states can be parallelized on GPUs.
+    Explicit verification of all states in a software or hardware system through model checking can be time-consuming due to the state explosion problem.
+    Swarm verification is an approach to tackle the state explosion problem by splitting the verification into many small, independent verification tests that can be massively parallelized, for example on the GPU.
     % 2. Specific problem
-    This approach works great on models with high connectivity.
-    However, it fails when a model has only few edges between states or large portions of the state space are hidden behind bottleneck structures.
-
+    Past work on the Grapple model checking framework has shown that low-connectivity models with only a single edge between each pair of states, or large portions of the state space hidden behind bottleneck structures, can cause a swarm model checker to significantly slow down in terms of unique states visited per verification test.
     % 3. Standard solutions and their limitations
-    Past work on the \emph{Grapple} model checker has tried different approaches including depth-limiting and alternating between breadth-first and depth-first search.
-
     % 4. Outline of the new solution
-    The main goal of this thesis is to:
-    (1) create a systematic way of classifying a model as \emph{low-connectivity}
-    (2) minimize the amount of verification tests needed to maximize the state space coverage of said models.
-    To do that, we provide an implementation of the \emph{Grapple} model checker.
-
+    In this thesis, we provide an implementation of a Grapple model checker, a method for estimating unique states visited, an extension to the default Grapple search strategy called \emph{start overs} that can reach deeper states, and a visualization technique for breadth-first search frontiers.
     % 5. How the solution was evaluated and what its outcomes are
+    Our experimental results show that our start over strategy can achieve a significant increase in state space coverage.
+    Our series of experiment on low-connectivity models shows promising characteristics that can potentially be used to identify low-connectivity models.
 \end{quotation}
 
 \tableofcontents
