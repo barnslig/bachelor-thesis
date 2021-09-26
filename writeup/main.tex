@@ -71,7 +71,7 @@ fancyheadings, % headings with seplines and logo
 \date{September 27, 2021}
 \subject{Bachelor Thesis}
 \professor{Prof. Dr. Sibylle Schupp}
-\advisor{Sascha Lehmann}
+\advisor{M.Sc. Sascha Lehmann}
 
 \begin{document}
 
@@ -133,12 +133,12 @@ In this thesis, we provide the following contributions to swarm model checking o
 
 \begin{itemize}
     \item A method for estimating unique states visited with a fixed error in a swarm verification.
-          This allows the observation of progress in state space coverage and giving probabilistic guarantees on models with known state space size.
+          Having the unique states visited, we can observe a swarm's progress in state space coverage.
     \item A Grapple search strategy extension called \emph{start overs} that can reach deeper states by continuing the search within a VT multiple times.
           Furthermore, the strategy allows using even smaller hash tables by compensating lost hash table capacity with additional start overs.
     \item A visualization of unvisited and visited states in the frontiers of Grapple's breadth-first search that shows promising characteristics on a set of low-connectivity models.
     \item An in-depth explanation of the Grapple state space exploration loop by breaking it down into subroutines.
-    \item An experimental implementation of a Grapple model checker, including a selection of models specifically implemented for on-the-fly verification on the GPU
+    \item An experimental implementation of a Grapple model checker, including a selection of models specifically implemented for on-the-fly verification on the GPU.
 \end{itemize}
 
 % 5. How the solution was evaluated and what its outcomes are
@@ -157,21 +157,23 @@ A brief summary on model checking, swarm verification and the CUDA GPU programmi
 The Grapple algorithm's components, swarm diversification techniques, including our start over strategy, and the unique states visited estimation are explained in \cref{chapter:theory}.
 Our concrete implementation is presented in \cref{chapter:implementation}.
 An extensive series of experiments comparing our implementation with the Grapple paper, and experiments comparing low-connectivity models with the waypoints benchmark model, is conducted in \cref{chapter:evaluation}.
-Last but not least, we conclude our results and give an outlook to additional interesting research problems arisen by this thesis in \cref{chapter:conclusions}.
+Finally, we conclude our results and give an outlook to additional interesting research problems arisen by this thesis in \cref{chapter:conclusions}.
 
 \chapter{Related Work}
 \label{chapter:related-work}
 
+In this thesis, we are implementing a parallelized swarm verification model checker on the GPU using CUDA to conduct a series of experiments on low-connectivity models.
+
 \emph{Swarm Verification} was first studied by \citeauthor*{Holzmann2008.Swarm-Verification} as verification method for models with large state spaces on which an exhaustive verification cannot be completed in any reasonable amount of time due to the state explosion problem \cite{Holzmann2008.Swarm-Verification}.
 It was first used as an extension to the SPIN model checker.
-Techniques for implementing swarm verification were introduced in \cite{Holzmann2011.Swarm-Verification-Techniques}, including a memory-efficient method of marking states as visited called \emph{bit state hashing}, multiple state space diversification techniques, and an evaluation of swarm verification performance on real-world models.
+Techniques for implementing swarm verification were introduced in \cite{Holzmann2011.Swarm-Verification-Techniques}, including a memory-efficient method of marking states as visited called \emph{bitstate hashing}, multiple state space diversification techniques, and an evaluation of swarm verification performance on real-world models.
 
 This thesis is based on the Grapple model checking framework \cite{DeFrancisco2020.Grapple}.
 They implement an explicit-state \cite{Holzmann2018.Explicit-State-Model-Checking}, on-the-fly, parallel swarm verification model checker on the GPU using the CUDA framework \cite{CUDA-Programming-Guide}.
 Our implementation tries to stay as close as possible to theirs, with three noteworthy exceptions:
 
 \begin{itemize}
-    \item To simplify the bit state hashing, we calculate bucket and element using bit shifts instead of arithmetic operations, resulting in a smaller hash table as we cannot address the full \SI{48}{\kibi\byte} of shared memory.
+    \item Our hash tables are smaller, as our implementation of bitstate hashing cannot address the full \SI{48}{\kibi\byte} of shared memory due to a simplified calculation of bucket and element using bit shifts instead of arithmetic operations.
     \item To estimate unique states visited, we use a HyperLogLog++ instead of accurate counting using a global hash table.
     \item To go deeper in a state space exploration, we extend the algorithm by a self-contained strategy named \emph{start overs} that is applied directly on-device within the GPU kernel, instead of the scatter-PDS approach used in Grapple where continuation of a search is controlled by the host.
 \end{itemize}
@@ -196,7 +198,7 @@ Another approach to model checking on the GPU is performed by DiVinE-CUDA \cite{
 Their work is focussed on finding accepting cycles, and thus verification of liveness properties, by reformulating the maximal accepting predecessors (MAP) algorithm to be conducted as matrix-vector multiplication on the GPU \cite{Barnat2009}.
 Even though the approach supports on-the-fly verification using similar operations for successor generation and violation checking as the Grapple framework, it cannot simply be added to a swarm verification.
 In swarm verification, no explicit state graph is built up during verification, or in other words, no explicit history of already visited states is kept.
-This introduces a severe difficulty on verifying whole paths for liveness properties.
+Having no explicit history of states introduces a severe difficulty on verifying whole paths for liveness properties.
 
 % TODO GPUexplore \cite{Wijs2014, Wijs2016}
 
@@ -212,7 +214,7 @@ Having a fixed error, it creates the possibility of giving probabilistic guarant
 
 Looking beyond model checking, \emph{graph partitioning} is an intuitively related problem to swarm verification.
 In graph partitioning, a graph is cut into mutual exclusive groups, so, for example, distributed algorithms can be run on them.
-An interesting approach in terms of on-the-fly verification are the streaming graph partitioning algorithms, which receive edges or vertices of a graph in a random order as inputs and produce partitions on them using heuristics \cite{Stanton2012}.
+An interesting approach in terms of on-the-fly verification are the streaming graph partitioning algorithms \cite{Stanton2012}, which receive edges or vertices of a graph in a random order as inputs and produce partitions on them using heuristics.
 A main difference to diversification in swarm verification is that states are distributed onto their partitions as they arrive, which, in a naive implementation, would require the search for violations to be conducted as separate step after partitioning.
 
 \chapter{Background}
@@ -220,8 +222,8 @@ A main difference to diversification in swarm verification is that states are di
 
 This chapter gives a brief summary on the main topics that this thesis is based on.
 First, we define the scope of model checking that we are looking at in \cref{section:background:model-checking}.
-We continue with an overview of Swarm Verification on the GPU and the specific problem that we are going to investigate, low-connectivity state space exploration, in \cref{section:background:parallelized-model-checking}.
-Last but not least, we give an introduction to the CUDA GPU programming framework in \cref{section:background:cuda}.
+We continue with an overview of swarm verification on the GPU and the specific problem that we are going to investigate, low-connectivity state space exploration, in \cref{section:background:parallelized-model-checking}.
+Finally, we give an introduction to the CUDA GPU programming framework in \cref{section:background:cuda}.
 
 \section{Model Checking}
 \label{section:background:model-checking}
@@ -241,7 +243,7 @@ Description of models through state machines, definition of the specification th
 There are two main branches of model checking:
 Explicit-State Model Checking and Symbolic Model Checking.
 Explicit-State Model Checking can only verify finite state machines.
-In particular, the model has to have finite states, each state needs to be representable by a finite-size tuple containing its atomic propositions, and the model changes state through execution of state transitions.
+In particular, the model has to have finite states, each state needs to be representable by a finite-size tuple containing its atomic propositions, and the model changes its state through execution of state transitions.
 To overcome these limitations and verify potentially infinite-size state machines or systems of unknown structure, Symbolic Model Checking uses the abstraction of \emph{symbols}, each representing a set of states and transitions.
 Within this thesis, we are only considering explicit-state model checking.
 
@@ -261,7 +263,7 @@ Within this thesis, we are only considering reachability and safety properties.
 % TODO Be more precise about *what* grows exponentially and *why* this is a problem
 A challenge all model checking algorithms have to face is the \emph{state explosion problem}.
 In an asynchronous model of $n$ processes, each consisting of $m$ states, the number of states grows exponentially by the number of processes, namely $m^n$.
-This means that even for small models, it is often not possible to fit all reachable states of the system into a computer's memory.
+Having an exponentially growing number of states, it is even for small models often not possible to fit all reachable states of the system into a computer's memory.
 Therefore, every model checking algorithm needs to reduce the state space in some sense.
 However, even then, a non-parallel algorithm may need a lot of physical time for exhaustive verification of the state space.
 In exhaustive verification, all states are visited and checked for a violation.
@@ -276,7 +278,7 @@ In exhaustive verification, all states are visited and checked for a violation.
 The basic operation in an explicit-state model checker is a state space exploration loop, as defined in \cref{alg:fundamental-state-space-exploration}.
 Model checking can be speed up by parallelizing the state space exploration, for example using a parallel breadth-first search (BFS) \cite{Holzmann2012.Paralellizing-SPIN}.
 
-%% What challenge is solved by Swarm Verification?
+%% What challenge is solved by swarm verification?
 A major challenge in parallelized BFS is the communication overhead between threads:
 Shared memory does not allow to easily split the work onto a cluster of heterogeneous processors or the massively parallel architecture of a GPU on which thousands of threads can exist simultaneously.
 
@@ -299,7 +301,7 @@ Shared memory does not allow to easily split the work onto a cluster of heteroge
 %% How does Swarm Verification work?
 %% How does Swarm Verification differ from other approaches?
 % TODO what is state space exploration?
-Swarm Verification is a new approach on parallelized model checking \cite{Holzmann2008.Swarm-Verification}.
+\emph{Swarm Verification} is a new approach on parallelized model checking \cite{Holzmann2008.Swarm-Verification}.
 It solves the challenge of parallelizing state-space search by splitting the state space exploration into many small, independent, memory-limited tasks called \emph{Verification Tests} (VTs).
 Each VT only covers a small subset of the total state space and, using \emph{diversification techniques}, uses a different search path.
 By executing all VTs and collecting their results, we still achieve nearly full state space coverage.
@@ -400,7 +402,7 @@ Each state exploration on its own does not cover the whole state space, however,
 
 % What is Grapple?
 The paper \citeinline{DeFrancisco2020.Grapple} which this thesis is based on contributes the \emph{Grapple} framework for parallel swarm verification on the GPU using CUDA.
-In their implementation of Swarm Verification, each VT's state space exploration runs in a parallel BFS, using CUDA's built-in synchronization primitives to coordinate threads.
+In their implementation of swarm verification, each VT's state space exploration runs in a parallel BFS, using CUDA's built-in synchronization primitives to coordinate threads.
 
 %% Which variations of the algorithm exist?
 %% How does the Grapple algorithm work?
@@ -417,7 +419,10 @@ A model has \emph{low connectivity} if at least one of the following properties 
     \item \textbf{Bottleneck Structures}: A single state or group of states other than the initial state that needs to be passed to reach most of the state space
 \end{itemize}
 
-See \cref{fig:lc-ex} for examples of these properties.
+\cref{fig:lc-ex} shows examples for both properties.
+On the left, an example of a generally linear state space is presented.
+Clearly, every state only has one inbound and one outbound edge.
+The example on the right side shows a state space with a bottleneck introduced by state A--E that need to be passed in order to reach state F--J.
 
 %% How can a model be classified as Low-Connectivity? (technically vs. theoretically ?)
 %% Why is the Grapple search algorithm so slow on Low-Connectivity models?
@@ -445,7 +450,6 @@ See \cref{fig:lc-ex} for examples of these properties.
 % How can many small tasks be executed in parallel? What is CUDA?
 %% What challenge does CUDA solve?
 CUDA is NVIDIA's proprietary GPU programming framework that provides automatic massive scalability \cite{CUDA-Programming-Guide}.
-
 %% What is the abstraction model of CUDA?
 The CUDA model defines a three-level abstraction.
 At the lowest level, a program function called \emph{kernel} is defined using C/C++.
@@ -484,14 +488,14 @@ Furthermore, CUDA defines multiple memory levels, each with different size and a
 
 %% Why are GPUs so interesting for swarm verification / model checking?
 CUDA requires the problem to be solved by a program to be split into many small sub-problems.
-This is a good fit with Swarm Verification, which turns the model checking problem into many small, independent VTs.
+This requirement is a good fit with swarm verification, which turns the model checking problem into many small, independent VTs.
 
 % - Challenge: Where to parallelize?
 
 % TODO Graphic of the CUDA architecture
 % TODO Example CUDA kernel, as in the intermediate presentation
 
-\chapter{Theory}
+\chapter{Concepts}
 \label{chapter:theory}
 
 This chapter gives a detailed explanation of the algorithms used by our model checker.
@@ -499,7 +503,7 @@ It starts with a formal definition of transition systems in \cref{section:theory
 We continue with an in-depth description of the Grapple framework's state space exploration loop and its components in \cref{section:theory:grapple-model-checker}
 Following that, we present a list of known state space diversification techniques and our \emph{start over} extension to the Grapple algorithm in \cref{section:theory:state-space-diversification}.
 Then, an explanation of the waypoints model commonly used to benchmark swarm model checkers follows in \cref{section:theory:waypoints-model}.
-We finish the chapter with a solution to the problem of counting the number of unique states visited in Swarm Verification in \cref{section:theory:counting-unique-states-visited}.
+We finish the chapter with a solution to the problem of counting the number of unique states visited in swarm verification in \cref{section:theory:counting-unique-states-visited}.
 
 % TODO what about the theory behind low-conn models ?
 
@@ -513,7 +517,7 @@ To formally define a model's transition system, we are using a \emph{Kripke Stru
 %% How are properties defined? (temporal logic)
 To define verification properties, Kripke structures are traditionally used in conjunction with temporal logic.
 In this thesis, we focus on the state space exploration part of model checking.
-Verification of states is thus abstracted away into the $\sViolates$ subroutine and not further covered.
+Verification of states is thus abstracted away into the $\sViolates$ subroutine of \cref{alg:grapple-state-space-exploration} and not further covered.
 By calling the subroutine on every visited state, we can still be sure that all violations in the covered state space are found, as long as the subroutine is correct.
 
 \section{Grapple Model Checker}
@@ -524,124 +528,16 @@ In Grapple, each VT executes an internally parallel state space exploration.
 We call it \emph{internally parallel} to differentiate between the parallelism \emph{within} a VT and the parallelism \emph{between} multiple VTs.
 Each thread in a VT executes \cref{alg:grapple-state-space-exploration}, which is a modified version of the Grapple state space exploration loop \cite[Algorithm 1]{DeFrancisco2020.Grapple} using subroutines.
 We use subroutines to separately reason about queue operations, successor generation and marking states as visited.
-We are going to call this algorithm the \emph{Grapple algorithm}.
+We abbreviate the Grapple state space exploration loop as \emph{Grapple algorithm}.
 The Grapple algorithm is based on \citeauthor*{Holzmann2012.Paralellizing-SPIN}'s parallel BFS \cite{Holzmann2012.Paralellizing-SPIN}.
 
 The following explanation of the algorithm is split into four parts:
 We start with a classification of Grapple's state generation strategy and its constraints imposed onto models in \cref{section:theory:model-definition-state-generation}.
 Based on that, we explain Grapple's parallel breadth-first search and define the corresponding queue operations in \cref{section:theory:queues}.
-Having the successor generation and parallel breadth-first search ready, we can finally define the single operation of the hash table in \cref{section:theory:hash-table}.
-Last but not least, we take a look at properties of the algorithm, including termination, in \cref{section:theory:grapple-properties}.
+Having the successor generation and parallel breadth-first search ready, we can define the single operation of the hash table in \cref{section:theory:hash-table}.
+Finally, we take a look at properties of the algorithm, including termination, in \cref{section:theory:grapple-properties}.
 
-\subsection{Model Definition and State Generation}
-\label{section:theory:model-definition-state-generation}
-
-% What constraints does the
-
-%% What is the difference between on-the-fly and a priori state generation?
-State generation strategies of model checkers can be divided into \emph{a priori} and \emph{on-the-fly} generation.
-In a priori generation, the state space graph is completely known before running the verification algorithm, for example as an adjacency matrix.
-In on-the-fly generation, the successors of each state are created on the fly during verification.
-Grapple uses on-the-fly generation on the GPU.
-
-As defined in \cref{section:theory:model-definition}, the transition relation of a model is left-total, meaning that for each state, there is at least one successor.
-We can define a function returning the successor set of a single state by
-\begin{align*}
-    \operatorname{succ} : S & \to S' \subseteq S                          \\
-    s                       & \mapsto \left\{ s' : (s, s') \in R \right\}
-\end{align*}
-This function allows each state to have a successor set with different cardinality.
-In Grapple, the successor set of a state is called its \emph{nondeterministic choices} (NDCs), highlighting the fact that any of them is a valid continuation of a path through the model's transition system.
-% TODO define pathes
-To leverage the performance benefit of the GPU's SIMT execution model, Grapple's successor generation has to be branch-free, so each thread can follow the same execution path.
-To achieve that, the Grapple algorithm constraints the models it can verify to those with an equal number of NDCs for all states, i.e.\[ \forall s_1, s_2 \in S : |\operatorname{succ}(s_1)| = |\operatorname{succ}(s_2)| \]
-
-Furthermore, Grapple can verify multi-process models.
-Following that, we can extend the definition of our transition system by the number of processes and NDCs: \[M_{\text{Grapple}} = \left(S; S_0; R; L; P; \mathit{NDC}\right)\]
-
-%% Which operations does the model have?
-The algorithm then uses two subroutines for successor generation and violation checking:
-\begin{align*}
-    \sSuccessor & : S \times \mathit{NDC} \times \mathit{P}  \to S \\
-    \sViolates  & : S \to \left\{0, 1\right\}
-\end{align*}
-The subroutine $\sSuccessor$ on-the-fly returns a single successor to a state and $\sViolates$ returns whether a state violates.
-
-\subsection{Parallel BFS and Queues}
-\label{section:theory:queues}
-
-We are now going to explain the parallel state space exploration loop defined in \cref{alg:grapple-state-space-exploration}, which is the main on-device routine of a Grapple model checker.
-A VT consists of multiple threads, each executing the state space exploration loop.
-Together, they perform a parallel BFS, searching the state space for violating states.
-%% What is the purpose of the queues?
-To cooperate, they are using a shared, multidimensional queue array that allows them to communicate lock-free.
-Being lock-free removes the overhead of waiting for locks to be released and allows the algorithm to run on a larger amount of threads, limited only by the quadratic size of the queues.
-%% How do the queues work?
-To be lock-free, there is only a single piece of memory to communicate over between each pair of threads.
-Writing and reading to this piece of memory is coordinated by splitting the algorithm into two alternating phases:
-
-In the first phase $t=0$, each thread $i$ processes all states from its input queues $Q\left[t\right]\left[ 0 \dots N \right]\left[i\right]$.
-Here, $N$ denotes the amount of threads executing a VT, with $N=32$ being the default.
-For each input state, successors are generated on-the-fly, as explained in \cref{section:theory:model-definition}.
-For each successor, we check whether it is already visited in a hash table.
-If a successor is priorly unvisited, we check whether it violates.
-Violating successors are reported to the host using a buffer.
-Non-violating successors are written to a random worker $j$'s input queue $Q\left[1 - t\right]\left[i\right]\left[j\right]$.
-When all input states are processed and threads are synchronized, the phases get swapped, i.e. $t = 1 - t$.
-This process repeats until no more unvisited successors are discovered.
-
-% TODO explain why we have a multi-slot queue for each thread ???
-
-%% Which operations does the queues have?
-Each queue $Q$ is a first in, first out (FIFO) queue supporting three operations: $\qPush(Q, state)$ adds a state to the back, $\qPop(Q)$ removes and returns the first state from the front and $\qEmpty(Q)$ tells whether a queue is empty.
-
-\subsection{Hash Table}
-\label{section:theory:hash-table}
-
-The hash table $H$ is primarily used to mark states as visited, so the parallel BFS at the latest terminates when all states have been visited once, resulting in an exhaustive search.
-In Grapple, the hash table does not resolve collisions.
-By deliberately accepting collisions, it serves two additional purposes:
-First, using a limited-size hash table, the BFS also terminates when the hash table is full, causing a collision of every new successor with an already visited state.
-Furthermore, by using a different hash function in each VT, the search gets diversified between VTs.
-By combining those two purposes, each VT searches a different portion of the state space, as explained in \cref{section:background:swarm-verification}.
-%% Which operations do the hash tables have?
-The hash table supports one operation that marks a state as visited and returns whether it was already visited before:
-\begin{align*}
-    \markVisited : H \times S \to \left\{0, 1\right\}
-\end{align*}
-
-%% How do the bit state hash table work and how can we control the collisions?
-
-\subsection{Properties of the Algorithm}
-\label{section:theory:grapple-properties}
-
-% TODO Validity: For which inputs does the algorithm work?
-\paragraph{Validity}
-The algorithm can only verify models with an equal number of NDCs for all states, as explained in \cref{section:theory:model-definition-state-generation}.
-Furthermore, due to the $\sViolates$ subroutine being called without path, only safety and reachability properties on the covered state space can be verified.
-
-% TODO Correctness: Are all criteria fulfilled? Ex: Is every discovered violation actually a violation?
-% \paragraph{Correctness}
-
-% Completeness: Does the algorithm find all violations?
-% See Counting Unique States Visited Section
-\paragraph{Completeness}
-A big challenge in Swarm Verification is the question on how much of the state space is actually covered, i.e. whether all violations are found.
-Due to overlap in state space between VTs and the sheer amount of states being checked by each VT, computing the exact number of unique states visited and thus the exact state space coverage can hardly be done.
-Instead, we can estimate the state space coverage, as described in \cref{section:theory:counting-unique-states-visited}.
-
-% Termination: When/Does/Under which (input) conditions does the algorithm terminate?
-\paragraph{Termination}
-The algorithm terminates when there are no more unvisited state successors according to the hash table, as explained in \cref{section:theory:hash-table}.
-Then, all input queues of the next phase remain empty, i.e. $Q\left[1 - t\right]\left[0 \dots N\right]\left[0 \dots N\right] = \emptyset$.
-Resulting from this, the algorithm at worst terminates after having visited the number of states being the minimum of queue size and state space size.
-
-% There are two reasons why at some point no more unvisited states get discovered:
-% Either, we did an exhaustive verification of the model, meaning that all states actually got visited.
-% Or, which happens most of the time in Grapple, the hash table is full, causing a collision of every new successor with an already visited state.
-% Collisions are intended, as mentioned in \cref{section:background:swarm-verification}.
-
-\begin{algorithm}
+\begin{algorithm}[!b]
     \caption{Grapple state space exploration loop of a single worker}
     \label{alg:grapple-state-space-exploration}
     \begin{algorithmic}
@@ -690,6 +586,115 @@ Resulting from this, the algorithm at worst terminates after having visited the 
         \EndWhile
     \end{algorithmic}
 \end{algorithm}
+
+\subsection{Model Definition and State Generation}
+\label{section:theory:model-definition-state-generation}
+
+% What constraints does the
+
+%% What is the difference between on-the-fly and a priori state generation?
+State generation strategies of model checkers can be divided into \emph{a priori} and \emph{on-the-fly} generation.
+In a priori generation, the state space graph is completely known before running the verification algorithm, for example as an adjacency matrix.
+In on-the-fly generation, the successors of each state are created on the fly during verification.
+Grapple uses on-the-fly generation on the GPU.
+
+As defined in \cref{section:theory:model-definition}, the transition relation of a model is left-total, meaning that for each state, there is at least one successor.
+We can define a function returning the successor set of a single state by
+\begin{align*}
+    \operatorname{succ} : S & \to S' \subseteq S                          \\
+    s                       & \mapsto \left\{ s' : (s, s') \in R \right\}
+\end{align*}
+This function allows each state to have a successor set with different cardinality.
+In Grapple, the successor set of a state is called its \emph{nondeterministic choices} (NDCs), highlighting the fact that any of them is a valid continuation of a path through the model's transition system.
+% TODO define pathes
+To leverage the performance benefit of the GPU's SIMT execution model, Grapple's successor generation has to be branch-free, so each thread can follow the same execution path.
+To achieve that, the Grapple algorithm constraints the models it can verify to those with an equal number of NDCs for all states, i.e.\[ \forall s_1, s_2 \in S : |\operatorname{succ}(s_1)| = |\operatorname{succ}(s_2)| \]
+
+Furthermore, Grapple can verify multi-process models.
+Following that, we can extend the definition of our transition system by the number of processes and NDCs: \[M_{\text{Grapple}} = \left(S; S_0; R; L; P; \mathit{NDC}\right)\]
+
+%% Which operations does the model have?
+The algorithm then uses two subroutines for successor generation and violation checking:
+\begin{align*}
+    \sSuccessor & : S \times \mathit{NDC} \times \mathit{P}  \to S \\
+    \sViolates  & : S \to \left\{0, 1\right\}
+\end{align*}
+The subroutine $\sSuccessor$ on-the-fly returns a single successor to a state and $\sViolates$ returns whether a state violates.
+
+\subsection{Parallel BFS and Queues}
+\label{section:theory:queues}
+
+Next, we explain the parallel state space exploration loop defined in \cref{alg:grapple-state-space-exploration}, which is the main on-device routine of a Grapple model checker.
+A VT consists of multiple threads, each executing the state space exploration loop.
+Together, they perform a parallel BFS, searching the state space for violating states.
+%% What is the purpose of the queues?
+To cooperate, they are using a shared, multidimensional queue array that allows them to communicate lock-free.
+Being lock-free removes the overhead of waiting for locks to be released and allows the algorithm to run on a larger amount of threads, limited only by the quadratic size of the queues.
+%% How do the queues work?
+To be lock-free, there is only a single piece of memory to communicate over between each pair of threads.
+Writing and reading to this piece of memory is coordinated by splitting the algorithm into two alternating phases:
+
+In the first phase $t=0$, each thread $i$ processes all states from its input queues $Q\left[t\right]\left[ 0 \dots N \right]\left[i\right]$.
+Here, $N$ denotes the amount of threads executing a VT, with $N=32$ being the default.
+For each input state, successors are generated on-the-fly, as explained in \cref{section:theory:model-definition}.
+For each successor, we check whether it is already visited in a hash table.
+If a successor is priorly unvisited, we check whether it violates.
+Violating successors are reported to the host using a buffer.
+Non-violating successors are written to a random worker $j$'s input queue $Q\left[1 - t\right]\left[i\right]\left[j\right]$.
+When all input states are processed and threads are synchronized, the phases get swapped, i.e. $t = 1 - t$.
+This process repeats until no more unvisited successors are discovered.
+
+% TODO explain why we have a multi-slot queue for each thread ???
+
+%% Which operations does the queues have?
+Each queue $Q$ is a first in, first out (FIFO) fixed-capacity queue supporting three operations: $\qPush(Q, state)$ adds a state to the back, $\qPop(Q)$ removes and returns the first state from the front and $\qEmpty(Q)$ tells whether a queue is empty.
+In Grapple, the default capacity of a queue is $I=4$.
+
+\subsection{Hash Table}
+\label{section:theory:hash-table}
+
+The hash table $H$ is primarily used to mark states as visited, so the parallel BFS at the latest terminates when all states have been visited once, resulting in an exhaustive search.
+In Grapple, the hash table does not resolve collisions.
+By deliberately accepting collisions, it serves two additional purposes:
+First, using a limited-size hash table, the BFS also terminates when the hash table is full, causing a collision of every new successor with an already visited state.
+Furthermore, by using a different hash function in each VT, the search gets diversified between VTs.
+By combining those two purposes, each VT searches a different portion of the state space, as explained in \cref{section:background:swarm-verification}.
+%% Which operations do the hash tables have?
+The hash table supports one operation that marks a state as visited and returns whether it was already visited before:
+\begin{align*}
+    \markVisited : H \times S \to \left\{0, 1\right\}
+\end{align*}
+
+%% How do the bitstate hash table work and how can we control the collisions?
+
+\subsection{Properties of the Algorithm}
+\label{section:theory:grapple-properties}
+
+% TODO Validity: For which inputs does the algorithm work?
+\paragraph{Validity}
+The algorithm can only verify models with an equal number of NDCs for all states, as explained in \cref{section:theory:model-definition-state-generation}.
+Furthermore, due to the $\sViolates$ subroutine being called without path, only safety and reachability properties on the covered state space can be verified.
+
+% TODO Correctness: Are all criteria fulfilled? Ex: Is every discovered violation actually a violation?
+% \paragraph{Correctness}
+
+% Completeness: Does the algorithm find all violations?
+% See Counting Unique States Visited Section
+\paragraph{Completeness}
+A big challenge in swarm verification is the question on how much of the state space is actually covered, i.e. whether all violations are found.
+Due to overlap in state space between VTs and the sheer amount of states being checked by each VT, computing the exact number of unique states visited and thus the exact state space coverage can hardly be done.
+Instead, we can estimate the state space coverage, as described in \cref{section:theory:counting-unique-states-visited}.
+
+% Termination: When/Does/Under which (input) conditions does the algorithm terminate?
+\paragraph{Termination}
+The algorithm terminates when there are no more unvisited state successors according to the hash table, as explained in \cref{section:theory:hash-table}.
+Then, all input queues of the next phase remain empty, i.e. $Q\left[1 - t\right]\left[0 \dots N\right]\left[0 \dots N\right] = \emptyset$.
+Resulting from this, the algorithm at worst terminates after having visited the number of states being the minimum of queue size and state space size.
+
+% There are two reasons why at some point no more unvisited states get discovered:
+% Either, we did an exhaustive verification of the model, meaning that all states actually got visited.
+% Or, which happens most of the time in Grapple, the hash table is full, causing a collision of every new successor with an already visited state.
+% Collisions are intended, as mentioned in \cref{section:background:swarm-verification}.
 
 \section{State Space Diversification}
 \label{section:theory:state-space-diversification}
@@ -744,7 +749,7 @@ This is a result of the nature of hash functions, mapping from an infinite domai
 A key observation on the state space exploration is that its maximum depth is mainly determined by the hash table capacity, as explained in \cref{section:theory:hash-table}.
 As each VT again starts at the initial state, even the union of the results of all VTs may potentially cover only the tip of a model.
 
-Following these two observations, we invented the \emph{Start Over} strategy, which is an extension to the Grapple algorithm that is self-contained within each VT.
+Following these two observations, we introduce our \emph{Start Over} strategy, which is an extension to the Grapple algorithm that is self-contained within each VT.
 Start overs work as follows:
 Each VT keeps a ring buffer of the last unvisited successors it has found.
 When the parallel BFS of a VT terminates, queues and hash table are cleared, the last unvisited successors are pushed into the queues as new, initial states and the BFS is started again.
@@ -838,8 +843,7 @@ As estimating the state space size of unknown models is out of scope of this the
 
 % What is the goal of our implementation?
 Our implementation serves two purposes:
-To reproduce the results from the Grapple paper \cite{DeFrancisco2020.Grapple}.
-And to run our experiment series on the state space exploration of low-connectivity models.
+To reproduce the results from the Grapple paper \cite{DeFrancisco2020.Grapple}, and to run our experiment series on the state space exploration of low-connectivity models.
 
 % What is the content of this chapter?
 This chapter documents our implementation of a Grapple model checker.
@@ -947,6 +951,17 @@ This means that state generation through branching results in a slower CUDA exec
 As a countermeasure, \citeauthor*{Bartocci2014.GPGPU-Parallel-SPIN} propose to calculate all possible state transitions every time, preserving the SIMT execution and at the same time creating different states in each thread \cite[Algorithm 3]{Bartocci2014.GPGPU-Parallel-SPIN}.
 To do so, it makes use of the custom ternary operator described in \cref{alg:branching-free-ternary-operator} that exploits the fact that boolean values evaluate to either zero or one.
 
+A key difference of our implementation is that we do not fit a state's variables into a single integer using bit shifts.
+Instead, we use regular C++ class data members.
+The increased memory demand by regular data members can be neglected, as the queues in which we store state instances are in global memory which is usually gigabytes in size.
+Also, the same behavior as in the paper can be achieved using C++ bit field members.
+
+Using our custom ternary, we can re-use DVE models from the BEEM model database \cite{BEEM-Database}.
+DVE is a file format used by the DIVINE 3 model checker.
+We translate DVE models into CUDA compatible C++ with the template described in \cref{alg:on-the-fly-state-generation-on-the-gpu}.
+
+% TODO explain the on-the-fly GPU state generation algorithm
+
 \begin{algorithm}
     \caption{Branching-Free Ternary Operator}
     \label{alg:branching-free-ternary-operator}
@@ -956,17 +971,6 @@ To do so, it makes use of the custom ternary operator described in \cref{alg:bra
         \EndFunction
     \end{algorithmic}
 \end{algorithm}
-
-A key difference of our implementation is that we do not fit a state's variables into a single integer using bit shifts.
-Instead, we use regular C++ class data members.
-The increased memory demand by regular data members can be neglected, as the queues in which we store state instances are in global memory which is usually gigabytes in size.
-Also, the same behavior as in the paper can be achieved using C++ bit field members.
-
-Using our custom ternary, we can re-use DVE models from the BEEM model database\footnote{\url{https://paradise.fi.muni.cz/beem/} (discontinued)}.
-DVE is a file format used by the DIVINE 3 model checker.
-We translate DVE models into CUDA compatible C++ with the template described in \cref{alg:on-the-fly-state-generation-on-the-gpu}.
-
-% TODO explain the on-the-fly GPU state generation algorithm
 
 \begin{algorithm}
     \caption{On-The-Fly State Generation on the GPU}
@@ -1101,7 +1105,6 @@ We start the evaluation with whether our implementation reaches the same number 
 We would expect both implementation to behave similarly, discovering at least 80 waypoints in \num{20000} VTs and all 100 waypoints in about \num{100000} VTs, as shown in \cref{fig:evaluation:EXP-00:1}.
 However, that is clearly not the case, as presented in \cref{fig:evaluation:EXP-00:2}.
 Our implementation found significantly fewer waypoints, even though the amount of VTs was 2.5x larger.
-
 To further investigate differences between the implementations, we conducted additional experiments.
 
 \begin{figure}
@@ -1134,7 +1137,7 @@ Clearly, both resemble each other closely.
 Thus, we assume them to work correct.
 This also confirmed the results from our first experiment, underlining our implementation's deficient state space exploration.
 
-\begin{figure}[h]
+\begin{figure}[!b]
     \begin{subfigure}[b]{.5\textwidth}
         \centering
         \includegraphics[width=\textwidth]{../evaluation/output-assets/EXP-01-comparison-waypoints-hll-1.pdf}
@@ -1197,7 +1200,7 @@ The state space coverage and total visited states of both experiments are highly
 The execution time of parallel execution was more than 35x faster.
 Concluding this, the experiment showed that batch execution of VTs highly speeds up execution time at equal results.
 
-\begin{table}
+\begin{table}[!b]
     \caption{Parallel and sequential exploration of the waypoints model}
     \label{table:EXP-03}
     \centering
@@ -1300,7 +1303,7 @@ We further observed an interesting property by taking the unique states visited 
 All three low-connectivity models achieved a rate $< \SI{0.1}{\percent}$.
 In conclusion, the performance deficiency of the three presented low-connectivity models can be observed through unique states visited and total states visited.
 
-\begin{table}
+\begin{table}[!b]
     \caption{Exploration of low-connectivity models, each after \num{125000} VTs}
     \label{table:EXP-12}
     \centering
