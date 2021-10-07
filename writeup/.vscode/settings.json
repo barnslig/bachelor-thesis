@@ -2,14 +2,25 @@
     "latex-workshop.latex.recipe.default": "latexmk (lualatex)",
     "ltex.latex.commands": {
       "\\citeinline{}": "dummy",
+
+      // siunitx
       "\\SI{}{}": "dummy",
       "\\num{}": "dummy",
       "\\numlist{}": "dummy",
+
+      // tikz
       "\\usegdlibrary{}": "ignore",
+
+      // algpseudocodex
       "\\State": "ignore",
       "\\Statex": "ignore",
       "\\While": "ignore",
       "\\For": "ignore",
       "\\If": "ignore",
+
+      // beamer, metropolis
+      "\\usetheme{}": "ignore",
+      "\\metroset{}": "ignore",
+      "\\setbeamertemplate{}": "ignore"
     }
 }
